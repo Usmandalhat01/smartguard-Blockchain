@@ -226,3 +226,48 @@ the actual indices rather than asserted.
 must be replaced with the generated CSV. This supersedes the row counts
 currently printed in the report — which is expected, since correction 1 required
 that partition to be re-established from one run.
+
+---
+
+## D-010 · passlib → bcrypt directly
+
+**Status** Applied
+**Affects** Table 3.6 (application-layer security controls)
+
+The service originally hashed passwords through `passlib`'s `CryptContext`.
+passlib has had no release since 2020 and breaks against bcrypt 5.x: it reads a
+private `__about__` attribute that bcrypt removed, then falls through to a code
+path that raises on any password over 72 bytes.
+
+Passwords are now hashed with the `bcrypt` package directly, at a work factor of
+12, with one addition worth stating: the password is SHA-256 hashed and
+base64-encoded before it reaches bcrypt.
+
+bcrypt truncates silently at 72 bytes. Without a pre-hash, a user with a longer
+passphrase would have the tail ignored without being told, and two passwords
+sharing a 72-byte prefix would collide. The base64 step matters too — a raw
+SHA-256 digest can contain a null byte, and bcrypt truncates at the first one.
+
+**Report edit** Table 3.6 does not currently name a password-hashing scheme. Add
+one: bcrypt at cost factor 12, with SHA-256 pre-hashing to avoid silent
+truncation.
+
+---
+
+## D-011 · python-jose → PyJWT
+
+**Status** Applied
+**Affects** Table 3.6
+
+`python-jose[cryptography]` pulls in `cryptography`, which requires a Rust
+toolchain to build wherever no wheel matches the platform — as happened on the
+development machine here.
+
+Sessions are HS256, which is symmetric: `hmac` and `hashlib` are the whole
+requirement. PyJWT implements it in pure Python with no compiled dependency.
+
+Nothing about the token format changes. The presentation layer verifies the same
+HS256 signature against the same shared secret.
+
+**Report edit** None required unless Table 3.6 is expanded to name libraries; if
+it is, record PyJWT.

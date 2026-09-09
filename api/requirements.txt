@@ -1,0 +1,27 @@
+# Application and intelligence layer.
+#
+# FastAPI is pinned to the 0.104 line Table 3.3 names. The rest are pinned to a
+# compatible minor line; psycopg is the PostgreSQL 15 driver.
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+SQLAlchemy==2.0.25
+psycopg[binary]==3.1.17
+PyJWT==2.8.0
+bcrypt==4.1.2
+python-multipart==0.0.6
+
+# Shared with the experiment pipeline: the API loads the serialised model that
+# ml/ produced, so these must match ml/requirements.txt exactly or the pickle
+# will not deserialise.
+scikit-learn==1.3.2
+imbalanced-learn==0.11.0
+numpy==1.26.4
+pandas==2.1.4
+joblib==1.3.2
+PyYAML==6.0.1
+
+# Web3.py for the oracle bridge (Sprint 4). Table 3.3 names 6.11.
+web3==6.11.3
