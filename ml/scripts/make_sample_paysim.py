@@ -60,8 +60,28 @@ def build(rows: int, fraud_rate: float, seed: int) -> pd.DataFrame:
     is_fraud = np.zeros(rows, dtype=np.int8)
     is_fraud[fraud_idx] = 1
 
-    amount[fraud_idx] = old_balance_orig[fraud_idx]
-    new_balance_orig[fraud_idx] = 0.0
+    # Fraudulent rows drain the originating account — but only mostly, and not
+    # always. Setting amount exactly equal to oldbalanceOrg would make
+    # amount_to_account_ratio a perfect giveaway, every classifier would score
+    # F1 = 1.0, and the stand-in would exercise nothing: no threshold sweep, no
+    # discrimination between models, no meaningful significance test.
+    #
+    # Real PaySim is genuinely hard. A development stand-in that is easy teaches
+    # you nothing about whether the pipeline works.
+    drain = rng.uniform(0.55, 1.0, size=len(fraud_idx))
+    amount[fraud_idx] = (old_balance_orig[fraud_idx] * drain).round(2)
+    new_balance_orig[fraud_idx] = (
+        old_balance_orig[fraud_idx] - amount[fraud_idx]
+    ).round(2)
+
+    # A minority of legitimate rows look similar, so the boundary is not clean.
+    legit_idx = np.flatnonzero(is_fraud == 0)
+    lookalike = rng.choice(legit_idx, size=int(len(legit_idx) * 0.02), replace=False)
+    amount[lookalike] = (old_balance_orig[lookalike] * rng.uniform(0.6, 0.95,
+                                                                  size=len(lookalike))).round(2)
+    new_balance_orig[lookalike] = (
+        old_balance_orig[lookalike] - amount[lookalike]
+    ).round(2)
 
     return pd.DataFrame({
         "step": step,

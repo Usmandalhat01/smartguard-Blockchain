@@ -49,3 +49,7 @@ coverage/
 # Development stand-in for PaySim. Regenerate with:
 #   python ml/scripts/make_sample_paysim.py
 ml/data/raw/SAMPLE_paysim.csv
+# Experiment outputs are committed once they come from real PaySim — they are
+# the evidence Chapter Four cites. Until then they are stand-in output; the run
+# manifest records which. Commit them deliberately with `git add -f`.
+ml/outputs/

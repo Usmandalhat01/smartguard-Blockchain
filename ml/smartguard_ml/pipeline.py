@@ -47,13 +47,24 @@ def stage_features(config: dict[str, Any]) -> None:
     dataset = config["dataset"]
     source = PATHS.root / dataset["source_csv"]
 
+    is_standin = False
     if not source.exists():
-        raise SystemExit(
-            f"\nPaySim not found at {source}\n\n"
-            "Download it from Kaggle (dataset: ealaxi/paysim1), which needs a free\n"
-            "account, and place the CSV at that path. Then rerun.\n\n"
-            "  kaggle datasets download -d ealaxi/paysim1 -p ml/data/raw --unzip\n",
-        )
+        fallback = PATHS.data_raw / "SAMPLE_paysim.csv"
+        if not fallback.exists():
+            raise SystemExit(
+                f"\nPaySim not found at {source}\n\n"
+                "Download it from Kaggle (dataset: ealaxi/paysim1), which needs a\n"
+                "free account, and place the CSV at that path:\n\n"
+                "  kaggle datasets download -d ealaxi/paysim1 -p ml/data/raw --unzip\n\n"
+                "Or generate a development stand-in to exercise the pipeline:\n\n"
+                "  python scripts/make_sample_paysim.py\n",
+            )
+        source = fallback
+        is_standin = True
+        _log("=" * 68)
+        _log("USING THE DEVELOPMENT STAND-IN, NOT PaySim.")
+        _log("No figure produced by this run may appear in the report.")
+        _log("=" * 68)
 
     _log(f"reading {source.name}")
     raw = pd.read_csv(source)
@@ -105,6 +116,8 @@ def stage_features(config: dict[str, Any]) -> None:
         "rows_used": int(len(features)),
         "fraud_rows_used": int(features["is_fraud"].sum()),
         "sample_frac": frac,
+        "source_file": source.name,
+        "is_development_standin": is_standin,
     }, indent=2) + "\n")
 
     _log(f"wrote {PATHS.features.relative_to(PATHS.root)}")
@@ -200,9 +213,18 @@ def stage_report(config: dict[str, Any]) -> None:
 
     summary = report_stage.build(config, labels, proposed)
 
+    counts_path = PATHS.tables / "preprocessing_counts.json"
+    data_source = json.loads(counts_path.read_text()) if counts_path.exists() else {}
+
     manifest = {
         "generated": datetime.now(timezone.utc).isoformat(),
         "seed": config["seed"],
+        "data_source": {
+            "file": data_source.get("source_file"),
+            "is_development_standin": data_source.get("is_development_standin"),
+            "rows_used": data_source.get("rows_used"),
+            "fraud_rows_used": data_source.get("fraud_rows_used"),
+        },
         "config_sha256": config_sha256(config),
         "repository": {"commit": git_commit(), "dirty_working_tree": git_dirty()},
         "environment": environment_record(),
@@ -233,6 +255,13 @@ def stage_report(config: dict[str, Any]) -> None:
     if abs(analysis["configured"] - analysis["max_f1_threshold"]) > 1e-9:
         print("  The configured value is NOT the empirical optimum. Section 4.3.6 "
               "must describe it as a configuration value.")
+
+    if manifest["data_source"].get("is_development_standin"):
+        print()
+        print("  " + "=" * 66)
+        print("  These figures come from the development stand-in, not PaySim.")
+        print("  They demonstrate that the pipeline runs. They are not results.")
+        print("  " + "=" * 66)
 
     print()
     _log(f"wrote {PATHS.manifest.relative_to(PATHS.root)}")
