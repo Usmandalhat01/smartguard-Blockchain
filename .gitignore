@@ -45,3 +45,7 @@ npm-debug.log*
 yarn-error.log*
 coverage/
 .pytest_cache/
+
+# Development stand-in for PaySim. Regenerate with:
+#   python ml/scripts/make_sample_paysim.py
+ml/data/raw/SAMPLE_paysim.csv

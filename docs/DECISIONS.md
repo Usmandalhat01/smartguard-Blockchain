@@ -149,3 +149,80 @@ were resolved before deployment". Replace with the specific result: no high or
 medium severity findings; three low-severity timestamp-dependence findings
 accepted on the grounds above. Attach `docs/evidence/slither-report.txt` to
 Appendix A rather than describing it.
+
+---
+
+## D-007 · Python 3.10 → 3.11
+
+**Status** Applied
+**Affects** Table 3.3, Section 3.8
+
+Table 3.3 specifies Python 3.10. The pipeline runs on 3.11.16.
+
+The machine available for development carries Python 3.9.6 (Command Line Tools)
+and 3.14.7 (Homebrew). Neither is workable: scikit-learn 1.3.2 and numpy 1.26.4
+publish no wheels for 3.14, and building numpy from source on a dual-core
+machine is not a reasonable step to put in a reproduction guide. 3.9 predates
+several typing constructs the pipeline uses.
+
+3.11 is the nearest supported version to the documented 3.10 with complete wheel
+coverage for every pinned dependency. The library versions Table 3.3 actually
+cites — scikit-learn 1.3, imbalanced-learn 0.11 — are pinned exactly and
+unaffected.
+
+**Report edit** In Table 3.3 and Section 3.8, change the Python version to 3.11.
+
+---
+
+## D-008 · Support Vector Machine → linear SVM by stochastic gradient descent
+
+**Status** Applied
+**Affects** Section 3.12.3, Section 3.16.3, Section 4.3.4
+
+Section 3.12.3 names Support Vector Machine as one of four comparators. An RBF
+`SVC` has training complexity between O(n²) and O(n³) in the number of samples.
+On the post-SMOTE training partition of 8,896,170 rows this does not terminate
+in any practical time, on any machine available to this project.
+
+The comparator is therefore `SGDClassifier` with hinge loss: the same
+margin-based, linear-separator family, fitted by stochastic gradient descent,
+which is linear in the number of samples.
+
+Two consequences the report must state rather than hide:
+
+1. The comparison is against a **linear** SVM. It does not establish anything
+   about an RBF kernel, which may well perform better.
+2. `SGDClassifier` under hinge loss exposes no `predict_proba`. Its decision
+   function is min-max scaled into [0, 1] for the ROC curve. That is a monotone
+   transform, so ROC-AUC is unaffected, but the values are not probabilities and
+   `evaluate.py` records `score_kind: scaled_margin` against them.
+
+**Report edit** In Section 3.12.3, replace "Support Vector Machine represents a
+margin-based classifier" with a statement naming the linear SVM and the reason.
+In Section 4.3.4, note that the SVM comparator's scores are scaled margins.
+
+---
+
+## D-009 · Only TRANSFER and CASH_OUT rows are used
+
+**Status** Applied
+**Affects** Section 3.13.2, Table 3.5
+
+PaySim assigns `isFraud = 1` only to `TRANSFER` and `CASH_OUT` operations. The
+remaining three types — `PAYMENT`, `CASH_IN`, `DEBIT` — cannot be positive by
+construction.
+
+Retaining them would add roughly 3.5 million rows that are guaranteed negative,
+which inflates accuracy toward the majority class without giving the model
+anything to learn. `pipeline.py` filters to the two labelled types and prints
+the retained count.
+
+This changes the row counts in Table 3.5, which currently describe the full
+6,362,620. The corrected counts are written to
+`ml/outputs/tables/table_3_5_partition.csv` by the split stage, computed from
+the actual indices rather than asserted.
+
+**Report edit** Section 3.13.2 must state the filter and the reason. Table 3.5
+must be replaced with the generated CSV. This supersedes the row counts
+currently printed in the report — which is expected, since correction 1 required
+that partition to be re-established from one run.

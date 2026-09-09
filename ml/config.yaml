@@ -1,0 +1,122 @@
+# ===========================================================================
+# Experiment configuration.
+#
+# One seed, one place. Nothing downstream carries its own constant, so a run is
+# fully described by this file plus the commit that produced it.
+#
+# The verification review found that the confusion matrix, the classification
+# report and the dataset partition in Chapter Four could not all describe the
+# same experiment. This file is the mechanism that makes that impossible: every
+# stage reads its parameters from here, and report.py derives every figure from
+# saved predictions rather than recomputing anything.
+# ===========================================================================
+
+seed: 20260909
+
+dataset:
+  # PaySim, López-Rojas, Elmir and Axelsson (2016).
+  # Kaggle: ealaxi/paysim1
+  source_csv: data/raw/PS_20174392719_1491204439457_log.csv
+  expected_rows: 6362620
+  expected_fraud: 8213
+
+  # Fraction of rows to use. Set to 1.0 for the run that goes in the report.
+  # Anything below 1.0 stratifies on the fraud label, so a development sample
+  # keeps the class ratio and the pipeline behaves the same way.
+  sample_frac: 1.0
+
+split:
+  # Section 3.13.4, Table 3.5.
+  train: 0.70
+  validation: 0.15
+  test: 0.15
+  stratify: true
+
+balancing:
+  # SMOTE is applied to the training partition only, after the split, inside a
+  # Pipeline — so no synthetic record can reach validation or test.
+  method: smote
+  k_neighbors: 5
+  # 1.0 reproduces Table 3.5's 1:1 post-SMOTE training set of 8,896,170 rows.
+  # See docs/DECISIONS.md D-007 before changing this: Table 3.5 must change too.
+  sampling_strategy: 1.0
+
+model_selection:
+  # Section 3.13.4 must state where the validation partition is used and where
+  # cross-validation is used. This is that statement, in executable form:
+  #
+  #   1. Hyperparameters are searched by `cv`-fold cross-validation *within the
+  #      training partition only*, on a stratified subsample of it.
+  #   2. The chosen configuration is then scored once against the held-out
+  #      validation partition, which is otherwise untouched.
+  #   3. The final model is refitted on the full training partition.
+  #   4. The test partition is read exactly once, by evaluate.py.
+  cv_folds: 5
+  scoring: f1
+  # Searching over millions of rows is impractical; this is the documented
+  # subsample the search runs on. Recorded so the procedure is reproducible.
+  search_sample_rows: 300000
+
+models:
+  random_forest:
+    estimator: RandomForestClassifier
+    proposed: true
+    fixed:
+      n_jobs: -1
+    grid:
+      n_estimators: [200]
+      max_depth: [18]
+      min_samples_leaf: [4]
+
+  logistic_regression:
+    estimator: LogisticRegression
+    fixed:
+      max_iter: 1000
+    grid:
+      C: [0.1, 1.0]
+
+  decision_tree:
+    estimator: DecisionTreeClassifier
+    grid:
+      max_depth: [12, 18]
+      min_samples_leaf: [4]
+
+  # Section 3.12.3 names Support Vector Machine. An RBF SVC is O(n^2)-O(n^3) and
+  # will not terminate on millions of rows, so the comparator is a linear SVM
+  # fitted by stochastic gradient descent, which is the same margin-based family
+  # and does scale. See docs/DECISIONS.md D-008.
+  linear_svm:
+    estimator: SGDClassifier
+    fixed:
+      loss: hinge
+      max_iter: 20
+    grid:
+      alpha: [0.0001, 0.001]
+
+  gradient_boosting:
+    estimator: HistGradientBoostingClassifier
+    grid:
+      max_depth: [8]
+      learning_rate: [0.1]
+
+ablation:
+  # Section 2.9 promises a measured effect of SMOTE. Chapter Four never reported
+  # one. This is that comparison: the proposed model, same split, with and
+  # without balancing.
+  enabled: true
+  model: random_forest
+
+threshold:
+  # Section 4.3.6. The operating point is a *configuration value* until the
+  # sensitivity analysis is regenerated from saved probabilities — which is what
+  # report.py now does.
+  configured: 0.75
+  sweep_start: 0.05
+  sweep_stop: 0.95
+  sweep_step: 0.05
+
+statistics:
+  # Objective Four requires more than a descriptive ranking. McNemar compares
+  # the proposed model against each comparator on the same held-out predictions.
+  test: mcnemar
+  alpha: 0.05
