@@ -1,0 +1,183 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  margin-bottom: 9px;
+}
+.back:hover { color: var(--text); }
+
+.ref {
+  font-family: var(--font-head);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-wrap: wrap;
+}
+
+.item { margin-top: 5px; font-size: 0.875rem; color: var(--text-dim); max-width: 62ch; line-height: 1.5; }
+
+.amount { margin-left: auto; text-align: right; }
+
+.amountValue {
+  font-family: var(--font-head);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.amountLabel { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1060px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.column { display: flex; flex-direction: column; gap: 18px; }
+
+.lockBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--elevated-line);
+  background: var(--elevated-soft);
+}
+
+.lockLabel { font-size: 0.8125rem; color: var(--text-2); line-height: 1.45; }
+
+.lockTime {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--elevated);
+  white-space: nowrap;
+}
+
+.lockTrack {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+  margin-top: 9px;
+}
+
+.lockFill { height: 100%; background: var(--elevated); border-radius: 999px; transition: width .4s ease; }
+
+.partyRow { display: flex; align-items: center; gap: 11px; padding: 11px 0; }
+.partyRow + .partyRow { border-top: 1px solid var(--line); }
+
+.partyAvatar {
+  display: grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex: none;
+}
+
+.partyAvatarYou { background: var(--brand-soft); color: var(--brand); }
+
+.partyInfo { min-width: 0; flex: 1; }
+
+.partyLabel {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.partyValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.youTag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--r-sm);
+  padding: 0 5px;
+}
+
+.gasTotal {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  background: var(--chain-soft);
+  border: 1px solid var(--chain-line);
+}
+
+.gasValue {
+  font-family: var(--font-head);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--chain);
+  font-variant-numeric: tabular-nums;
+}
+
+.gasLabel { font-size: 0.75rem; color: var(--text-dim); }
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.prose { font-size: 0.875rem; line-height: 1.6; color: var(--text-2); }
+.proseMeta { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+
+.actionBar {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  align-items: center;
+}
+
+.actionLabel { font-size: 0.8125rem; color: var(--text-dim); margin-right: auto; }

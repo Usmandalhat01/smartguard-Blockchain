@@ -1,0 +1,339 @@
+/* ============================================================================
+   Domain visualisations: risk dial, escrow state machine, four-layer trace,
+   audit timeline, feature contribution bars.
+   ========================================================================= */
+
+/* ------------------------------------------------------------ risk dial -- */
+
+.dial { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.dialSvg { display: block; }
+
+.dialTrack { stroke: var(--surface-3); }
+
+.dialReadout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dialScore {
+  font-family: var(--font-head);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.dialScale { font-size: 0.6875rem; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.03em; }
+
+.dialMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.dialGuidance {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 34ch;
+}
+
+/* ------------------------------------------------------------- risk bar -- */
+
+.riskBar {
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--safe) 0%,
+    var(--safe) 38%,
+    var(--elevated) 48%,
+    var(--high) 64%,
+    var(--blocked) 82%,
+    var(--blocked) 100%
+  );
+  opacity: .9;
+}
+
+.riskBarMarker {
+  position: absolute;
+  top: -4px;
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--surface);
+  transform: translateX(-50%);
+}
+
+.riskBarGate {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  width: 2px;
+  background: var(--text-dim);
+  transform: translateX(-50%);
+}
+
+.riskBarGate::after {
+  content: 'gate';
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.riskBarScale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------- state machine - */
+
+.states { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 2px; }
+
+.stateNode {
+  flex: 1;
+  min-width: 128px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  position: relative;
+  transition: background .18s ease, border-color .18s ease;
+}
+
+.stateNode:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+.stateNode:last-child  { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.stateNode + .stateNode { border-left: none; }
+
+.stateNodeDone    { background: var(--surface); }
+.stateNodeCurrent { background: var(--surface); border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; z-index: 1; }
+.stateNodeFuture  { opacity: .5; }
+
+.stateIndex {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stateName {
+  margin-top: 3px;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stateTime { margin-top: 3px; font-size: 0.6875rem; color: var(--text-muted); }
+
+.stateCaption {
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------ layer map -- */
+
+.layers { display: flex; flex-direction: column; gap: 7px; }
+
+.layer {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  transition: border-color .2s ease, background .2s ease;
+}
+
+.layerActive { border-color: currentColor; background: var(--surface); }
+.layerDone   { background: var(--surface); }
+.layerIdle   { opacity: .58; }
+
+.layerIcon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
+.layerIconOn { background: currentColor; }
+.layerIconOn > * { color: var(--surface); }
+
+.layerName { font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+.layerDetail { font-size: 0.75rem; color: var(--text-dim); margin-top: 1px; line-height: 1.45; }
+.layerTiming { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+
+.layerConnector {
+  width: 1px;
+  height: 8px;
+  background: var(--line-strong);
+  margin-left: 26px;
+}
+
+/* -------------------------------------------------------------- timeline - */
+
+.timeline { display: flex; flex-direction: column; }
+
+.tlItem {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.tlItem:last-child { padding-bottom: 0; }
+
+.tlItem:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 12.5px;
+  top: 24px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.tlMarker {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  z-index: 1;
+}
+
+.tlBody { min-width: 0; padding-top: 2px; }
+
+.tlHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.tlEvent {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.tlTime { font-size: 0.6875rem; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+.tlSummary { font-size: 0.8125rem; color: var(--text-2); line-height: 1.5; }
+
+.tlMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tlMetaItem { display: inline-flex; align-items: center; gap: 4px; }
+
+/* -------------------------------------------------- feature contributions */
+
+.contribs { display: flex; flex-direction: column; gap: 11px; }
+
+.contrib { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: baseline; }
+
+.contribName {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contribValue {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.contribTrack {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+/* Zero sits at the centre: bars grow right toward the fraud class, left away. */
+.contribFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  transition: width .3s ease;
+}
+
+.contribAxis {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.contribRaise { background: var(--blocked); }
+.contribLower { background: var(--safe); }
+
+/* ------------------------------------------------------------ provenance - */
+
+.provChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 17px;
+  border-radius: var(--r-sm);
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.provOriginal  { background: var(--chain-soft);    color: var(--chain);    border-color: var(--chain-line); }
+.provDerived   { background: var(--brand-soft);    color: var(--brand);    border-color: var(--brand-line); }
+.provSimulated { background: var(--elevated-soft); color: var(--elevated); border-color: var(--elevated-line); }

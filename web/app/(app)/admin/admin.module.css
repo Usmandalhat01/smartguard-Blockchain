@@ -1,0 +1,74 @@
+.layerRow {
+  display: flex;
+  gap: 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.layerIcon {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  flex: none;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.layerHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.layerName { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.layerRole { font-size: 0.8125rem; color: var(--text-dim); margin-top: 3px; line-height: 1.45; }
+
+.gasRow { display: flex; align-items: center; gap: 9px; font-size: 0.8125rem; }
+
+.permList { display: flex; flex-wrap: wrap; gap: 4px; max-width: 520px; }
+
+.perm {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.thresholdValue {
+  font-family: var(--font-head);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.thresholdRow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.thresholdHint { font-size: 0.8125rem; color: var(--text-dim); }
+
+.slider { width: 100%; accent-color: var(--brand); }
+
+.blockedRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.8125rem;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--blocked-soft);
+  border: 1px solid var(--blocked-line);
+}
+
+.prose { font-size: 0.8125rem; color: var(--text-2); line-height: 1.6; }
+
+.importanceRow { display: flex; justify-content: space-between; font-size: 0.8125rem; margin-bottom: 3px; }
+.importanceTrack { height: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.importanceFill { height: 100%; border-radius: 999px; background: var(--brand); }
+
+.featureKey { color: var(--text-muted); font-size: 0.72rem; }
+.featureCaveat { margin-top: 4px; font-size: 0.75rem; color: var(--elevated); line-height: 1.45; }
+
+.provRow { display: flex; gap: 9px; align-items: flex-start; }
+.provLabel { font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+.provNote { font-size: 0.75rem; color: var(--text-dim); line-height: 1.45; margin-top: 1px; }

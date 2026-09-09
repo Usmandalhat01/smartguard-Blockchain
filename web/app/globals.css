@@ -1,0 +1,207 @@
+/* ============================================================================
+   SmartGuard — Presentation Layer
+   Design tokens.  Two themes with full parity; every colour is defined on
+   :root first so nothing depends on a media query resolving.
+
+   Colour has semantic meaning throughout this interface:
+     --brand   application / intelligence layer  (violet)
+     --chain   blockchain + oracle layer         (cyan)
+     risk ramp safe -> elevated -> high -> blocked
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* --- surfaces ------------------------------------------------------- */
+  --bg:            #F7F8FC;
+  --bg-grid:       rgba(15, 23, 42, 0.035);
+  --surface:       #FFFFFF;
+  --surface-2:     #F3F5FA;
+  --surface-3:     #E9EDF6;
+  --surface-inset: #F7F9FD;
+  --line:          #E2E7F1;
+  --line-strong:   #CBD3E3;
+
+  /* --- text ------------------------------------------------------------ */
+  --text:          #0F172A;
+  --text-2:        #475569;
+  --text-dim:      #64748B;
+  --text-muted:    #94A3B8;
+
+  /* --- application / intelligence layer -------------------------------- */
+  --brand:         #5B4BE8;
+  --brand-strong:  #4839D4;
+  --brand-soft:    #EEECFE;
+  --brand-line:    #C9C2F7;
+  --on-brand:      #FFFFFF;
+
+  /* --- blockchain / oracle layer --------------------------------------- */
+  --chain:         #0E8FA8;
+  --chain-strong:  #0B7186;
+  --chain-soft:    #E0F4F8;
+  --chain-line:    #A9DDE7;
+
+  /* --- risk ramp -------------------------------------------------------- */
+  --safe:          #0F8A5F;
+  --safe-soft:     #E3F5EC;
+  --safe-line:     #A9DEC5;
+
+  --elevated:      #B27400;
+  --elevated-soft: #FBF1DC;
+  --elevated-line: #EAD09A;
+
+  --high:          #D2601A;
+  --high-soft:     #FCEDE3;
+  --high-line:     #F0C4A5;
+
+  --blocked:       #C8322F;
+  --blocked-soft:  #FCEBEA;
+  --blocked-line:  #F2B9B7;
+
+  /* --- effects ---------------------------------------------------------- */
+  --shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md:  0 2px 4px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.06);
+  --shadow-lg:  0 4px 8px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.10);
+  --shadow-pop: 0 12px 32px rgba(15, 23, 42, 0.14);
+  --ring:       0 0 0 3px rgba(91, 75, 232, 0.20);
+
+  /* --- geometry --------------------------------------------------------- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  --font-sans:  var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-head:  var(--font-jakarta), var(--font-sans);
+  --font-mono:  var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --shell-max: 1240px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:            #080B14;
+  --bg-grid:       rgba(148, 163, 184, 0.05);
+  --surface:       #101625;
+  --surface-2:     #161E30;
+  --surface-3:     #1F293E;
+  --surface-inset: #0C1220;
+  --line:          #232E45;
+  --line-strong:   #33415C;
+
+  --text:          #F1F5F9;
+  --text-2:        #C3CDDC;
+  --text-dim:      #8C9BB2;
+  --text-muted:    #64748B;
+
+  --brand:         #8B7CFF;
+  --brand-strong:  #A398FF;
+  --brand-soft:    rgba(139, 124, 255, 0.14);
+  --brand-line:    rgba(139, 124, 255, 0.34);
+  --on-brand:      #0B0F19;
+
+  --chain:         #35C6E0;
+  --chain-strong:  #63D6EA;
+  --chain-soft:    rgba(53, 198, 224, 0.13);
+  --chain-line:    rgba(53, 198, 224, 0.32);
+
+  --safe:          #34D399;
+  --safe-soft:     rgba(52, 211, 153, 0.13);
+  --safe-line:     rgba(52, 211, 153, 0.30);
+
+  --elevated:      #FBBF24;
+  --elevated-soft: rgba(251, 191, 36, 0.13);
+  --elevated-line: rgba(251, 191, 36, 0.30);
+
+  --high:          #FB923C;
+  --high-soft:     rgba(251, 146, 60, 0.13);
+  --high-line:     rgba(251, 146, 60, 0.30);
+
+  --blocked:       #F87171;
+  --blocked-soft:  rgba(248, 113, 113, 0.13);
+  --blocked-line:  rgba(248, 113, 113, 0.32);
+
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md:  0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg:  0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --ring:       0 0 0 3px rgba(139, 124, 255, 0.30);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-2);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-head);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.021em;
+  line-height: 1.22;
+}
+
+p  { margin: 0; }
+ul, ol { margin: 0; padding: 0; }
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+a:hover { color: var(--brand-strong); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
+}
+
+::selection { background: var(--brand-soft); color: var(--text); }
+
+/* Numerals line up in tables and metric readouts. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  letter-spacing: -0.01em;
+}
+
+/* Scrollbars — unobtrusive, theme aware. */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 3px solid var(--bg);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
