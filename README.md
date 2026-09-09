@@ -16,7 +16,7 @@ Miva Open University Abuja · Department of Software Engineering
 contracts/   Solidity contracts, Hardhat tests, deployment scripts   [built]
 web/         Next.js presentation layer and access control           [built]
 ml/          Experiment pipeline: data, training, evaluation         [built]
-api/         FastAPI service and oracle bridge                       [pending]
+api/         FastAPI service and oracle bridge                       [service built, bridge pending]
 docs/        Decision log and the evidence the report cites
 ```
 
@@ -25,8 +25,8 @@ docs/        Decision log and the evidence the report cites
 | Layer | Implementation | Status |
 | ----- | -------------- | ------ |
 | Presentation | React 19 · Next.js App Router | Built |
-| Application & intelligence | FastAPI · scikit-learn · PostgreSQL | Model pipeline built; service pending |
-| Oracle / integration | Web3.py bridge · event listener | Sprint 4 |
+| Application & intelligence | FastAPI · scikit-learn · PostgreSQL | Built |
+| Oracle / integration | Web3.py bridge · event listener | Sprint 4 — next |
 | Blockchain | Solidity 0.8.20 · Ethereum Sepolia | Built |
 
 ## Quick start
@@ -42,6 +42,11 @@ npx hardhat run scripts/deploy.js --network sepolia
 # Presentation layer
 cd web && npm install
 npm run dev                   # http://localhost:3000
+
+# Application and intelligence layer
+cd api && python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m smartguard_api.seed
+.venv/bin/uvicorn smartguard_api.main:app --reload --port 8000
 
 # Experiment pipeline
 cd ml && make setup
