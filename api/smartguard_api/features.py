@@ -8,6 +8,13 @@ question than it was trained on.
 Where a value cannot be observed at request time — PaySim's simulation step, for
 instance — a documented stand-in is used and named here rather than left as an
 unexplained constant.
+
+**Train/serve skew is the failure mode this module exists to prevent.** Each
+feature below is annotated with the training-time expression it must reproduce.
+A feature computed from a different quantity than the one the model learned does
+not fail loudly: it returns a confident, meaningless number. Any change here
+must be checked against `ml/smartguard_ml/features.py`, and
+`tests/test_feature_parity.py` asserts the two agree on a worked example.
 """
 
 from __future__ import annotations
@@ -30,9 +37,11 @@ def build_vector(payload: ScoringInput, now: datetime | None = None) -> dict[str
 
     amount = payload.amountEth * ETH_TO_PAYSIM_UNITS
     mean_30d = max(payload.meanAmount30d * ETH_TO_PAYSIM_UNITS, 1.0)
+    balance = payload.accountBalanceEth * ETH_TO_PAYSIM_UNITS
 
     return {
         "transaction_amount": amount,
+        # Training: amount - the originating account's mean amount.
         "amount_deviation": amount - mean_30d,
         "velocity_24h": float(payload.velocity24h),
         # Longer windows are not separately observable at request time; they are
@@ -53,7 +62,11 @@ def build_vector(payload: ScoringInput, now: datetime | None = None) -> dict[str
         # Escrow deposits are transfers, which is PaySim's TRANSFER type.
         "transaction_type": 1.0,
         "prior_completed_rate": max(0.0, 1.0 - payload.buyerDisputeRate),
-        "amount_to_account_ratio": amount / (mean_30d + 1.0),
+        # Training: amount / (oldbalanceOrg + 1.0) — the share of the
+        # originating account's balance this transaction moves. It must be the
+        # balance, not the mean amount: a full drain approaches 1.0, and that
+        # is the shape the model learned to read.
+        "amount_to_account_ratio": amount / (balance + 1.0),
         # PaySim's step is a simulation hour in [1, 744]. A live request has a
         # real timestamp; the hour of the month is the closest equivalent and
         # keeps the value inside the range the model was fitted on.

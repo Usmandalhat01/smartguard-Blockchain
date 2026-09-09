@@ -271,3 +271,76 @@ HS256 signature against the same shared secret.
 
 **Report edit** None required unless Table 3.6 is expanded to name libraries; if
 it is, record PyJWT.
+
+---
+
+## D-012 · Train/serve skew in `amount_to_account_ratio`
+
+**Status** Fixed
+**Affects** Section 3.12.4, Table 3.4
+
+Found while walking a full escrow lifecycle through the live service. Worth
+recording in full, because the report will need to describe how the inference
+feature set is kept consistent with the training feature set — and because the
+failure mode is invisible.
+
+`ml/smartguard_ml/features.py` builds the feature as:
+
+```python
+amount / (oldbalanceOrg + 1.0)      # share of the account's balance moved
+```
+
+`api/smartguard_api/features.py` was building it as:
+
+```python
+amount / (mean_amount_30d + 1.0)    # multiple of the typical transaction size
+```
+
+These are different quantities with different distributions. In training, a
+fraudulent row drains the account and the ratio approaches 1.0 — that is the
+shape the model learns to read. At inference, a perfectly ordinary 1.5 ETH
+request against a 1.6 ETH mean produced 0.94, which the model reads as an
+account being almost entirely emptied.
+
+Nothing failed. The endpoint returned 200 with a confident number, and the
+number was meaningless. That is the characteristic of train/serve skew and the
+reason it survives to production: there is no exception to catch.
+
+**The fix.** `ScoringInput` now carries `accountBalanceEth`, and the ratio is
+computed from the balance, as training does. Every feature in the inference
+builder now carries the training expression it must reproduce as a comment, and
+`api/tests/test_feature_parity.py` asserts the feature list and order match the
+pipeline's, pins this specific expression, and checks a full drain still reaches
+the range the model was trained on.
+
+**Report edit** Section 3.12.4 should state that the inference-time feature
+construction is verified against the training-time construction by test, and
+that the request carries the originating account's balance for this reason.
+
+---
+
+## D-013 · Inference-time stand-ins for unobservable features
+
+**Status** Applied, needs stating in the report
+**Affects** Section 3.12.4, Section 3.19
+
+Three of the eighteen features cannot be observed at request time and are
+approximated. They are listed here because an unexplained constant in a feature
+vector is precisely what Section 3.12.5 was faulted for.
+
+| Feature | Training | Inference |
+| ------- | -------- | --------- |
+| `velocity_7d` | Count over 168 simulation steps | 24-hour count × 4 |
+| `velocity_30d` | Count over 720 simulation steps | 24-hour count × 12 |
+| `step_time` | PaySim step, 1–744 | Hour of the calendar month, kept in the same range |
+
+There is also a scale conversion. PaySim amounts are in the simulator's currency
+units, not Ether; the model learned that scale, so `ETH_TO_PAYSIM_UNITS`
+converts before scoring. It is a prototype calibration, not an exchange rate,
+and Section 3.12.4 already records PaySim's amount as "a synthetic
+transaction-value proxy" rather than an observed Ether value.
+
+**Report edit** Add these three rows and the scale factor to Section 3.12.4, and
+list them among the methodological limitations in Section 3.19. A production
+system would compute the longer velocity windows from its own transaction
+history rather than extrapolating them.

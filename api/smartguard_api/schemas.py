@@ -69,6 +69,11 @@ class ScoringInput(Strict):
     highRiskGeo: bool
     offHours: bool
     meanAmount30d: float = Field(ge=0)
+    # The buyer's wallet balance before this transaction. Required because
+    # `amount_to_account_ratio` is trained as amount / (balance + 1); computing
+    # it from anything else at inference time feeds the model a different
+    # quantity than it learned. See docs/DECISIONS.md D-012.
+    accountBalanceEth: float = Field(ge=0)
     channel: Literal["web", "mobile"]
 
 

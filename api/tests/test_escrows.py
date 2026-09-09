@@ -23,6 +23,7 @@ def scoring_payload(seller_id: str, **overrides) -> dict:
         "highRiskGeo": False,
         "offHours": False,
         "meanAmount30d": 1.6,
+        "accountBalanceEth": 12.0,
         "channel": "web",
     }
     payload.update(overrides)
