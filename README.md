@@ -15,7 +15,7 @@ Miva Open University Abuja · Department of Software Engineering
 ```
 contracts/   Solidity contracts, Hardhat tests, deployment scripts   [built]
 web/         Next.js presentation layer and access control           [built]
-ml/          Experiment pipeline: data, training, evaluation         [pending]
+ml/          Experiment pipeline: data, training, evaluation         [built]
 api/         FastAPI service and oracle bridge                       [pending]
 docs/        Decision log and the evidence the report cites
 ```
@@ -25,7 +25,7 @@ docs/        Decision log and the evidence the report cites
 | Layer | Implementation | Status |
 | ----- | -------------- | ------ |
 | Presentation | React 19 · Next.js App Router | Built |
-| Application & intelligence | FastAPI · scikit-learn · PostgreSQL | Sprint 3 |
+| Application & intelligence | FastAPI · scikit-learn · PostgreSQL | Model pipeline built; service pending |
 | Oracle / integration | Web3.py bridge · event listener | Sprint 4 |
 | Blockchain | Solidity 0.8.20 · Ethereum Sepolia | Built |
 
@@ -42,7 +42,15 @@ npx hardhat run scripts/deploy.js --network sepolia
 # Presentation layer
 cd web && npm install
 npm run dev                   # http://localhost:3000
+
+# Experiment pipeline
+cd ml && make setup
+python scripts/make_sample_paysim.py    # stand-in, until PaySim is downloaded
+make all
 ```
+
+Credentials for Sepolia and the PaySim download are covered step by step in
+[docs/SETUP-KEYS.md](docs/SETUP-KEYS.md).
 
 ## Evidence
 
