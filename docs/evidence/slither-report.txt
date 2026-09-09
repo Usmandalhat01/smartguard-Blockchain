@@ -1,0 +1,21 @@
+Slither static analysis — SmartGuard contracts
+Generated: 2026-09-09T18:32:46Z
+Slither:   0.11.4
+solc:      0.8.20 (optimizer enabled, 200 runs)
+Config:    slither.config.json
+
+================================================================
+
+INFO:Detectors:
+Detector: timestamp
+EscrowContract.releaseFunds(bytes32) (contracts/EscrowContract.sol#283-293) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < unlocksAt (contracts/EscrowContract.sol#290)
+EscrowContract.claimRefund(bytes32) (contracts/EscrowContract.sol#343-354) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < escrow.holdingPeriodEndsAt (contracts/EscrowContract.sol#349)
+RiskOracleContract.updateRiskScore(bytes32,uint8,bytes32,uint256,uint64) (contracts/RiskOracleContract.sol#94-115) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > expiry (contracts/RiskOracleContract.sol#104)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Slither:. analyzed (9 contracts with 98 detectors), 3 result(s) found

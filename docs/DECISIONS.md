@@ -115,3 +115,37 @@ the value that governed the contract's behaviour is the value that stays in the
 ledger.
 
 **Report edit** In Section 3.14.2, record that assessments are single-write.
+
+---
+
+## D-006 · Slither timestamp findings accepted, with justification
+
+**Status** Accepted, not remediated
+**Affects** Section 3.15.1, Appendix A
+
+Slither 0.11.4 reports three findings against the contracts, all from the
+`timestamp` detector and all low severity. There are no high or medium severity
+findings.
+
+| Location | Comparison |
+| -------- | ---------- |
+| `EscrowContract.releaseFunds` | `block.timestamp < unlocksAt` |
+| `EscrowContract.claimRefund` | `block.timestamp < holdingPeriodEndsAt` |
+| `RiskOracleContract.updateRiskScore` | `block.timestamp > expiry` |
+
+The detector flags any dependence on `block.timestamp`, because a validator can
+nudge it by a small margin. The relevant question is whether that margin is
+material to the comparison, and here it is not: the time lock is 48 hours, the
+holding period is seven days, and the oracle expiry window is minutes. A
+manipulation of a few seconds cannot change the outcome of any of them.
+
+Rewriting these to block heights would be worse, not better. Block intervals
+vary, so a height-based lock would express "roughly 48 hours" less precisely than
+a timestamp does, and it would make the interface unable to show a party when
+their window actually closes.
+
+**Report edit** Section 3.15.1 currently states that "all high-severity findings
+were resolved before deployment". Replace with the specific result: no high or
+medium severity findings; three low-severity timestamp-dependence findings
+accepted on the grounds above. Attach `docs/evidence/slither-report.txt` to
+Appendix A rather than describing it.
