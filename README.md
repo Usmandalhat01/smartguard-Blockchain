@@ -51,10 +51,21 @@ npx hardhat run scripts/deploy.js --network sepolia
 cd web && npm install
 npm run dev                   # http://localhost:3000
 
+# Database. PostgreSQL 16; the seed creates the schema on first run.
+brew install postgresql@16 && brew services start postgresql@16
+psql -d postgres -c "CREATE ROLE smartguard LOGIN PASSWORD '<password>' CREATEDB;"
+psql -d postgres -c "CREATE DATABASE smartguard OWNER smartguard;"
+
 # Application and intelligence layer
 cd api && python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m smartguard_api.seed
 .venv/bin/uvicorn smartguard_api.main:app --reload --port 8000
+
+# Load test — NFR-01 and NFR-05. Starts its own API, so stop the one above.
+cd api && .venv/bin/python -m loadtest.run
+
+# Interface evidence. Needs the web app and the API running.
+cd web && node scripts/capture-screenshots.js
 
 # Experiment pipeline
 cd ml && make setup
@@ -64,6 +75,11 @@ make all
 
 Credentials for Sepolia and the PaySim download are covered step by step in
 [docs/SETUP-KEYS.md](docs/SETUP-KEYS.md).
+
+The password in `DATABASE_URL` must match the role's. The test suites do not
+need PostgreSQL — `tests/conftest.py` points them at a temporary SQLite file —
+but the load test does, because SQLite serialises writes and would report a
+throughput figure that says nothing about the deployed stack.
 
 ## Evidence
 

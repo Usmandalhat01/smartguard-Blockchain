@@ -1,5 +1,17 @@
+# Test and measurement tooling. Not needed to run the service.
+#
+# Kept separate from requirements.txt because none of it is imported by
+# smartguard_api: a deployment that installs the service should not pull a load
+# generator with it.
+
 -r requirements.txt
 
+# The unit and integration suites. They run against a temporary SQLite file
+# (tests/conftest.py), so they need no database server.
 pytest==7.4.4
-pytest-asyncio==0.23.3
 httpx==0.26.0
+
+# The NFR-01 and NFR-05 load test, api/loadtest/. This one DOES need
+# PostgreSQL: SQLite serialises writes, so a throughput figure measured on it
+# would say nothing about the deployed stack.
+locust==2.39.1
