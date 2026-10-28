@@ -52,8 +52,18 @@ For each of the two accounts, with that account selected:
 
 ## 2 · Sepolia test ether
 
-Only the **deployer** needs funding. Roughly 0.05 ETH covers deployment and a
-comfortable number of test transactions.
+**Both** accounts need funding. The deployer pays for the two contract
+deployments; the oracle operator pays for every risk-score write, because
+`updateRiskScore` authenticates on `msg.sender` and so is submitted by the
+operator itself. Roughly 0.05 ETH on the deployer and 0.01 ETH on the operator
+covers deployment and a comfortable number of test transactions.
+
+If only one faucet claim is available, fund the deployer and transfer a little
+to the operator afterwards:
+
+```
+npx hardhat run scripts/fund-operator.js --network sepolia
+```
 
 Most faucets require the receiving account to have some mainnet activity, or a
 free account with the provider. Try in this order:
@@ -65,8 +75,15 @@ free account with the provider. Try in this order:
 | <https://faucets.chain.link/sepolia> | GitHub account |
 | <https://sepolia-faucet.pk910.de> | Proof-of-work in the browser, no account |
 
-Paste your deployer's **public address** (starts `0x`, safe to share — this is
+Paste the account's **public address** (starts `0x`, safe to share — this is
 not the private key). Funds usually arrive within a minute or two.
+
+Confirm both accounts loaded and are funded before deploying:
+
+```
+cd contracts
+npx hardhat run scripts/check-accounts.js --network sepolia
+```
 
 Confirm it landed: paste the address into <https://sepolia.etherscan.io>.
 

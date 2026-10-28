@@ -1,0 +1,93 @@
+
+  DEPLOYER_PRIVATE_KEY looks like an account ADDRESS (20 bytes), not a private key (32 bytes).
+  In MetaMask: Account details -> Show private key. See docs/SETUP-KEYS.md.
+  Sepolia is unavailable until this is corrected; local networks still work.
+
+
+  ORACLE_PRIVATE_KEY looks like an account ADDRESS (20 bytes), not a private key (32 bytes).
+  In MetaMask: Account details -> Show private key. See docs/SETUP-KEYS.md.
+  Sepolia is unavailable until this is corrected; local networks still work.
+
+
+
+  EscrowContract
+    depositFunds — the risk gate
+      ✔ accepts a deposit when the score is within the gate (1576ms)
+      ✔ accepts a score exactly at the gate (67ms)
+      ✔ refuses a score one above the gate (49ms)
+      ✔ holds no funds after a refused deposit
+      ✔ fails closed when no assessment exists
+      ✔ cannot be bypassed by scoring a different amount
+      ✔ rejects a zero-value deposit
+      ✔ rejects a buyer who is also the seller
+      ✔ rejects an arbitrator who is also a party
+      ✔ rejects a duplicate escrow id
+      ✔ retains the threshold in force at deposit
+    confirmDelivery
+      ✔ moves INITIATED to DELIVERED and starts the time lock
+      ✔ refuses the seller
+      ✔ refuses an unrelated address
+      ✔ refuses a second confirmation
+      ✔ refuses an unknown escrow
+    releaseFunds
+      ✔ pays the seller once the time lock elapses
+      ✔ refuses while the time lock is running
+      ✔ refuses an address that is not a party
+      ✔ sends to the recorded seller regardless of who calls it (52ms)
+      ✔ refuses from INITIATED
+    initiateDispute
+      ✔ lets the buyer dispute from DELIVERED
+      ✔ lets the seller dispute from INITIATED
+      ✔ refuses the arbitrator
+      ✔ refuses an unrelated address
+      ✔ freezes release once disputed
+      ✔ refuses a second dispute
+    resolveDispute
+      ✔ releases to the seller on true
+      ✔ refunds the buyer on false
+      ✔ refuses the buyer
+      ✔ refuses the seller
+      ✔ refuses the contract owner
+      ✔ refuses when the escrow is not disputed
+      ✔ refuses a second resolution
+    claimRefund
+      ✔ refunds the buyer after the holding period
+      ✔ refuses before the holding period elapses
+      ✔ refuses the seller
+      ✔ refuses once delivery has been confirmed
+    security
+      ✔ resists a reentrant seller
+      ✔ keeps escrows independent
+    administration
+      ✔ lets the owner move the gate
+      ✔ applies a new gate to the next deposit
+      ✔ refuses a gate above 100
+      ✔ refuses a gate change from anyone but the owner
+      ✔ refuses an oracle change from anyone but the owner
+
+  RiskOracleContract
+    deployment
+      ✔ records the operator and emits the change
+      ✔ refuses a zero-address operator
+    updateRiskScore
+      ✔ records a score and emits it with the model version
+      ✔ accepts the boundary values 0 and 100
+      ✔ rejects a caller that is not the operator
+      ✔ rejects a score above 100
+      ✔ rejects a second write for the same escrow
+      ✔ rejects a replayed nonce
+      ✔ rejects a nonce that goes backwards
+      ✔ rejects an expired assessment
+      ✔ accepts an assessment right up to its expiry
+    reads
+      ✔ reverts rather than returning a default for an unscored escrow
+      ✔ returns the full assessment record
+    key rotation
+      ✔ lets the owner rotate the operator
+      ✔ revokes the previous operator in the same transaction
+      ✔ refuses rotation by anyone but the owner
+      ✔ refuses rotation to the zero address
+
+
+  62 passing (3s)
+
