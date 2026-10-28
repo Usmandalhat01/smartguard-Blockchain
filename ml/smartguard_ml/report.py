@@ -325,6 +325,73 @@ def importance_figure(importances: pd.DataFrame, path: Path) -> None:
     plt.close(fig)
 
 
+# --------------------------------------------------------- score kinds ----
+
+def score_kinds() -> dict[str, str]:
+    """What each saved score array actually is.
+
+    evaluate.py records this because not every estimator produces a calibrated
+    probability: the linear SVM has only a decision function, whose margin is
+    min-max scaled into [0, 1]. The transform is monotone, so ROC-AUC is
+    unaffected — but a *shared* threshold means nothing across the two kinds,
+    and Table 4.1 applies one. Without this column a reader sees the SVM's F1
+    beside the Random Forest's and concludes the SVM cannot detect fraud, when
+    what it cannot do is honour someone else's cut-off.
+
+    This reads a recorded artefact, not a model, so the guarantee that report.py
+    cannot load an estimator or re-partition the data still holds.
+    """
+    path = PATHS.outputs / "evaluation_records.json"
+    if not path.exists():
+        return {}
+    return {
+        record["model"]: record.get("score_kind", "unknown")
+        for record in json.loads(path.read_text())
+    }
+
+
+def own_best_f1(y_true: np.ndarray, scores: np.ndarray) -> dict[str, float]:
+    """The best F1 a model can reach at any cut-off, and where that cut-off is.
+
+    Computed from the full precision-recall curve rather than a sampled grid.
+    That matters here: fraud is 0.13 per cent of the test partition, so every
+    threshold worth considering lies inside the top 0.13 per cent of the score
+    range. A grid spaced evenly over quantiles — or over the score range — puts
+    almost no candidates there and reports a maximum far below the real one.
+    `precision_recall_curve` evaluates every distinct score, so the result is
+    exact.
+
+    Reported beside the shared-threshold figure so a model scored on a different
+    scale is not misrepresented. It is not a licence to quote this as the
+    headline: 0.75 is the operating point, and Section 4.3.6 already treats it
+    as a configuration value.
+    """
+    precision, recall, thresholds = precision_recall_curve(y_true, scores)
+
+    # precision_recall_curve returns one more point than it has thresholds; the
+    # final point is recall 0, precision 1, which no threshold produces.
+    precision, recall = precision[:-1], recall[:-1]
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        f1 = np.where(
+            (precision + recall) > 0,
+            2 * precision * recall / (precision + recall),
+            0.0,
+        )
+
+    if len(f1) == 0:
+        return {"threshold": float("nan"), "f1_fraud": float("nan"),
+                "precision_fraud": float("nan"), "recall_fraud": float("nan")}
+
+    best = int(np.nanargmax(f1))
+    return {
+        "threshold": float(thresholds[best]),
+        "f1_fraud": float(f1[best]),
+        "precision_fraud": float(precision[best]),
+        "recall_fraud": float(recall[best]),
+    }
+
+
 # ------------------------------------------------------------- assembly ----
 
 def build(config: dict[str, Any], labels: list[str], proposed: str) -> dict[str, Any]:
@@ -344,10 +411,39 @@ def build(config: dict[str, Any], labels: list[str], proposed: str) -> dict[str,
         }
 
     # --- Table 4.1 ------------------------------------------------------
-    table = pd.DataFrame([
-        {"model": label, **payload["metrics"]} for label, payload in results.items()
-    ]).sort_values("f1_fraud", ascending=False).reset_index(drop=True)
+    kinds = score_kinds()
+    rows = []
+    for label, payload in results.items():
+        kind = kinds.get(label, "unknown")
+        own = own_best_f1(payload["y_true"], payload["scores"])
+        rows.append({
+            "model": label,
+            **payload["metrics"],
+            "score_kind": kind,
+            # False where a shared cut-off is meaningless for this row.
+            "comparable_at_shared_threshold": kind == "probability",
+            "f1_at_own_best_threshold": own["f1_fraud"],
+            "own_best_threshold": own["threshold"],
+            "precision_at_own_best": own["precision_fraud"],
+            "recall_at_own_best": own["recall_fraud"],
+        })
+
+    table = (pd.DataFrame(rows)
+             .sort_values("f1_fraud", ascending=False)
+             .reset_index(drop=True))
     table.to_csv(PATHS.tables / "table_4_1_classification.csv", index=False)
+
+    incomparable = table[~table["comparable_at_shared_threshold"]]
+    for row in incomparable.itertuples():
+        print(f"\n  NOTE: {row.model} is scored on a {row.score_kind}, not a "
+              f"probability.\n"
+              f"  Its ROC AUC ({row.roc_auc:.4f}) is threshold-free and "
+              f"comparable; its F1 at the\n"
+              f"  shared {threshold:.2f} cut-off ({row.f1_fraud:.4f}) is not. At "
+              f"its own best threshold\n"
+              f"  ({row.own_best_threshold:.4f}) it reaches F1 "
+              f"{row.f1_at_own_best_threshold:.4f}. Table 4.1 must carry this "
+              f"distinction.")
 
     # --- classification report, per model -------------------------------
     reports = {}
