@@ -54,7 +54,7 @@ the classes on its own.
 | 12 | `prior_dispute_rate` | simulated | Transactions previously disputed by the originating account divided by its total historical transactions. |
 | 13 | `seller_dispute_rate` | simulated | Disputes raised against the destination account divided by its total fulfilled transactions. |
 | 14 | `amount_rounded` | derived | 1 when `amount` is an exact integer multiple of 1000, else 0. |
-| 15 | `transaction_type` | original | 1 for TRANSFER, 0 for CASH_OUT. PaySim labels fraud only on these two operation types, so the other three are dropped. |
+| 15 | `transaction_type` | original | Operation type, ordered by empirical fraud rate over the full dataset: 2 for TRANSFER (0.769% fraudulent), 1 for CASH_OUT (0.184%), 0 for PAYMENT, CASH_IN and DEBIT (0.000% — PaySim cannot label these positive). The ordering is monotone in fraud propensity, so the single ordinal column is usable by the linear comparators as well as by the tree ensembles. |
 | 16 | `prior_completed_rate` | simulated | Settled transactions divided by lifetime transactions for the originating account. |
 | 17 | `amount_to_account_ratio` | derived | amount / (oldbalanceOrg + 1), the transaction's size relative to the originating account's balance before it. |
 | 18 | `step_time` | original | The raw PaySim simulation step, representing elapsed simulation hour (1-744). |

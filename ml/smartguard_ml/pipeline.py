@@ -76,12 +76,34 @@ def stage_features(config: dict[str, Any]) -> None:
             f"cites that figure; reconcile before publishing.",
         )
 
-    # PaySim labels fraud only on TRANSFER and CASH_OUT. Keeping the other three
-    # operation types would add three million rows that cannot be positive by
-    # construction, which inflates accuracy and teaches the model nothing.
-    before = len(raw)
-    raw = raw[raw["type"].isin(PAYSIM_FRAUD_TYPES)].reset_index(drop=True)
-    _log(f"  kept {len(raw):,} of {before:,} rows ({', '.join(PAYSIM_FRAUD_TYPES)})")
+    # PaySim labels fraud only on TRANSFER and CASH_OUT, so the other three
+    # operation types cannot be positive by construction. Dropping them yields a
+    # denser training signal — but it also changes every row count in Table 3.5,
+    # and that table is the one the supervisor's corrections reconciled by hand
+    # (Section 4.3.2 exists because an earlier confusion matrix described
+    # 1,906,034 observations instead of the documented 954,393).
+    #
+    # Re-opening a settled count is a worse outcome than a diluted majority
+    # class, so the filter defaults to off and the partition reproduces
+    # Table 3.5 exactly. `transaction_type` is feature 15, so the model can
+    # still learn that the three excluded types never carry a positive label.
+    # See docs/DECISIONS.md D-009.
+    raw_rows = len(raw)
+    type_filter_applied = bool(dataset.get("restrict_to_fraud_types", False))
+
+    if type_filter_applied:
+        before = raw_rows
+        raw = raw[raw["type"].isin(PAYSIM_FRAUD_TYPES)].reset_index(drop=True)
+        _log(
+            f"  restrict_to_fraud_types: kept {len(raw):,} of {before:,} rows "
+            f"({', '.join(PAYSIM_FRAUD_TYPES)}) — Table 3.5 must be regenerated",
+        )
+    else:
+        counts = raw["type"].value_counts()
+        _log(
+            f"  all {len(raw):,} rows retained across {len(counts)} operation types "
+            f"(Table 3.5 reconciliation)",
+        )
 
     duplicates = int(raw.duplicated().sum())
     missing = int(raw.isna().sum().sum())
@@ -109,8 +131,9 @@ def stage_features(config: dict[str, Any]) -> None:
     # Correction 10: report the actual counts rather than asserting that
     # preprocessing removed some unspecified number of records.
     (PATHS.tables / "preprocessing_counts.json").write_text(json.dumps({
-        "raw_rows": before,
-        "rows_after_type_filter": int(len(raw)) if frac >= 1.0 else None,
+        "raw_rows": raw_rows,
+        "restrict_to_fraud_types": type_filter_applied,
+        "rows_after_type_filter": int(len(raw)) if type_filter_applied else None,
         "duplicate_rows_found": duplicates,
         "missing_values_found": missing,
         "rows_used": int(len(features)),

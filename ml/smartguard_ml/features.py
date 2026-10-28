@@ -94,8 +94,12 @@ FEATURE_SPECS: list[FeatureSpec] = [
     FeatureSpec(14, "amount_rounded", "derived", "int8",
                 "1 when `amount` is an exact integer multiple of 1000, else 0."),
     FeatureSpec(15, "transaction_type", "original", "int8",
-                "1 for TRANSFER, 0 for CASH_OUT. PaySim labels fraud only on these "
-                "two operation types, so the other three are dropped."),
+                "Operation type, ordered by empirical fraud rate over the full "
+                "dataset: 2 for TRANSFER (0.769% fraudulent), 1 for CASH_OUT "
+                "(0.184%), 0 for PAYMENT, CASH_IN and DEBIT (0.000% — PaySim "
+                "cannot label these positive). The ordering is monotone in fraud "
+                "propensity, so the single ordinal column is usable by the linear "
+                "comparators as well as by the tree ensembles."),
     FeatureSpec(16, "prior_completed_rate", "simulated", "float32",
                 "Settled transactions divided by lifetime transactions for the "
                 "originating account.",
@@ -107,6 +111,19 @@ FEATURE_SPECS: list[FeatureSpec] = [
                 "The raw PaySim simulation step, representing elapsed simulation hour "
                 "(1-744)."),
 ]
+
+# Feature 15's levels. Ordered by the fraud rate each type carries across the
+# full 6,362,620 rows, so the code is monotone in fraud propensity rather than
+# arbitrary. Any type absent from this mapping scores 0, which is correct for
+# the three PaySim never labels fraudulent.
+TRANSACTION_TYPE_CODES: dict[str, int] = {
+    "TRANSFER": 2,   # 0.769% fraudulent
+    "CASH_OUT": 1,   # 0.184% fraudulent
+    "PAYMENT": 0,    # 0.000%
+    "CASH_IN": 0,    # 0.000%
+    "DEBIT": 0,      # 0.000%
+}
+
 
 FEATURE_NAMES: list[str] = [spec.name for spec in FEATURE_SPECS]
 
@@ -236,7 +253,12 @@ def build_features(raw: pd.DataFrame, seed: int) -> pd.DataFrame:
 
     # --- original -------------------------------------------------------
     features["transaction_amount"] = df["amount"].astype("float32")
-    features["transaction_type"] = (df["type"] == "TRANSFER").astype("int8")
+    # Ordered by empirical fraud rate, not alphabetically — see FeatureSpec 15.
+    # Keeping one ordinal column rather than one-hot encoding five types holds
+    # the feature count at the eighteen the report commits to in Section 3.12.4.
+    features["transaction_type"] = (
+        df["type"].map(TRANSACTION_TYPE_CODES).fillna(0).astype("int8")
+    )
     features["step_time"] = df["step"].astype("int16")
 
     # --- derived --------------------------------------------------------

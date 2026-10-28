@@ -203,29 +203,54 @@ In Section 4.3.4, note that the SVM comparator's scores are scaled margins.
 
 ---
 
-## D-009 · Only TRANSFER and CASH_OUT rows are used
+## D-009 · All five operation types are retained (reversed)
 
-**Status** Applied
-**Affects** Section 3.13.2, Table 3.5
+**Status** Reversed on 28 October 2026. No report edit is required.
+**Affects** Section 3.13.2, Table 3.5, Table 3.4 (feature 15)
 
-PaySim assigns `isFraud = 1` only to `TRANSFER` and `CASH_OUT` operations. The
-remaining three types — `PAYMENT`, `CASH_IN`, `DEBIT` — cannot be positive by
-construction.
+PaySim assigns `isFraud = 1` only to `TRANSFER` and `CASH_OUT` operations, so
+the remaining three — `PAYMENT`, `CASH_IN`, `DEBIT` — cannot be positive by
+construction. This decision originally filtered them out: roughly 3.5 million
+guaranteed-negative rows inflate accuracy toward the majority class.
 
-Retaining them would add roughly 3.5 million rows that are guaranteed negative,
-which inflates accuracy toward the majority class without giving the model
-anything to learn. `pipeline.py` filters to the two labelled types and prints
-the retained count.
+**Why it was reversed.** The filter changes every row count in Table 3.5, and
+the final supervisor corrections reconciled that table by hand. Section 4.3.2
+exists *because* an earlier confusion matrix described 1,906,034 observations
+instead of the documented 954,393; the correction was to establish one
+partition that reconciles. Presenting the department with a third set of
+partition counts would re-open the exact defect the correction closed — a worse
+outcome than a diluted majority class, particularly since Section 3.16.1
+already states that accuracy "is reported for completeness but is not the
+primary performance criterion" and that minority-class F1 is the criterion that
+counts.
 
-This changes the row counts in Table 3.5, which currently describe the full
-6,362,620. The corrected counts are written to
-`ml/outputs/tables/table_3_5_partition.csv` by the split stage, computed from
-the actual indices rather than asserted.
+The filter therefore survives as `dataset.restrict_to_fraud_types`, which
+defaults to `false`. With it off, the split stage reproduces Table 3.5 exactly,
+computed from the saved indices rather than asserted:
 
-**Report edit** Section 3.13.2 must state the filter and the reason. Table 3.5
-must be replaced with the generated CSV. This supersedes the row counts
-currently printed in the report — which is expected, since correction 1 required
-that partition to be re-established from one run.
+| Partition | Legitimate | Fraudulent | Total | Fraud ratio |
+|---|---|---|---|---|
+| Full dataset | 6,354,407 | 8,213 | 6,362,620 | 0.1291% |
+| Training | 4,448,085 | 5,749 | 4,453,834 | 0.1291% |
+| Validation | 953,161 | 1,232 | 954,393 | 0.1291% |
+| Held-out test | 953,161 | 1,232 | 954,393 | 0.1291% |
+
+SMOTE then resamples the training partition to 8,896,170 rows, which is the
+post-oversampling row count Table 3.5 lists as the planned configuration.
+
+**Consequence for feature 15.** `transaction_type` was specified as "1 for
+TRANSFER, 0 for CASH_OUT", which only has meaning once the other three types
+are gone. It is now an ordinal code over all five, ordered by the fraud rate
+each type actually carries across the full dataset — `TRANSFER` 0.769%,
+`CASH_OUT` 0.184%, and the other three 0.000%. The ordering is therefore
+monotone in fraud propensity rather than arbitrary, which keeps the column
+usable by the linear comparators as well as the tree ensembles, and one ordinal
+column rather than a one-hot expansion holds the feature count at the eighteen
+Section 3.12.4 commits to.
+
+**Report edit** Table 3.4, feature 15: replace the description with the
+three-level ordinal code and its fraud rates. Table 3.5 needs no change — the
+run now reproduces it.
 
 ---
 
