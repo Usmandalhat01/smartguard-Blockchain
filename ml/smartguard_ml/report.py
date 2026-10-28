@@ -182,6 +182,75 @@ def comparison_figure(table: pd.DataFrame, path: Path) -> None:
     plt.close(fig)
 
 
+# ------------------------------------------------------------ figure 4.3 ---
+
+def radar_figure(
+    table: pd.DataFrame, timings: dict[str, float], path: Path, top_n: int = 3,
+) -> None:
+    """The three strongest classifiers across six dimensions at once.
+
+    Section 4.3.4 describes this figure as plotting "the three strongest
+    classifiers against six dimensions", and records that it could not be
+    regenerated because "the underlying prediction and timing records were
+    unavailable". The sixth dimension is inference speed, which is why the
+    evaluation stage records microseconds per row.
+
+    Speed is normalised against the slowest of the plotted models rather than
+    against an absolute scale, so the axis says "fastest of these three", not
+    "fast". An absolute speed axis would need a stated reference machine.
+    """
+    metrics = ["accuracy", "precision_fraud", "recall_fraud", "f1_fraud", "roc_auc"]
+    pretty = ["Accuracy", "Precision\n(fraud)", "Recall\n(fraud)", "F1\n(fraud)",
+              "ROC-AUC", "Inference\nspeed"]
+
+    plotted = table.head(top_n)
+
+    # Slower is a larger microseconds-per-row, so the axis is inverted to make
+    # "further from the centre is better" hold on all six — otherwise the
+    # enclosed area carries no meaning. The fastest of the plotted models sits
+    # at 1.0 and the rest fall proportionally below it.
+    speeds = {m: timings.get(m) for m in plotted["model"]}
+    usable = [v for v in speeds.values() if v]
+    fastest = min(usable) if usable else None
+
+    def speed_score(model: str) -> float:
+        measured = speeds.get(model)
+        if not measured or not fastest:
+            return 0.0
+        return fastest / measured
+
+    angles = np.linspace(0, 2 * np.pi, len(pretty), endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(5.2, 5.2), subplot_kw={"polar": True})
+
+    for i, (_, row) in enumerate(plotted.iterrows()):
+        values = [float(row[m]) for m in metrics]
+        values.append(speed_score(row["model"]))
+        closed = values + values[:1]
+
+        ax.plot(angles, closed, color=PALETTE[i % len(PALETTE)], linewidth=1.6,
+                label=row["model"])
+        ax.fill(angles, closed, color=PALETTE[i % len(PALETTE)], alpha=0.10)
+
+    ax.set_xticks(angles[:-1], labels=pretty, fontsize=8)
+    ax.set_ylim(0, 1.0)
+    ax.set_yticks([0.25, 0.5, 0.75, 1.0], labels=["0.25", "0.50", "0.75", "1.00"],
+                  fontsize=7)
+    ax.set_rlabel_position(180 / len(pretty))
+    ax.grid(alpha=0.3, linewidth=0.6)
+    ax.set_title(
+        f"Multi-dimensional comparison, {top_n} strongest by fraud-class F1\n"
+        "all axes oriented so that further from the centre is better",
+        fontsize=9, pad=18,
+    )
+    ax.legend(loc="upper right", bbox_to_anchor=(1.22, 1.14), frameon=False,
+              fontsize=8)
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
 # ------------------------------------------------------------ figure 4.5 ---
 
 def threshold_figure(
@@ -293,13 +362,49 @@ def build(config: dict[str, Any], labels: list[str], proposed: str) -> dict[str,
         json.dumps(reports, indent=2) + "\n",
     )
 
-    # --- figures --------------------------------------------------------
+    # --- figures ---------------------------------------------------------
+    #
+    # Filenames follow the figure numbers in the corrected report, so assembling
+    # the document is a copy rather than a renumbering exercise:
+    #
+    #   Figure 4.1  ROC curves                 Section 4.3.3
+    #   Figure 4.2  Model comparison           Section 4.3.4
+    #   Figure 4.3  Radar comparison           Section 4.3.4
+    #   Figure 4.4  Feature importance         Section 4.3.5
+    #   Figure 4.5  Threshold sensitivity      Section 4.3.6
+    #
+    # The confusion matrix carries no number because Section 4.3.2 removed it:
+    # the matrix in the submitted report described 1,906,034 observations and
+    # could not be reconciled with the documented 954,393-row test partition.
+    # This run reconciles, so the matrix can be reinstated — see docs/FIGURES.md
+    # for where it goes and what renumbering that implies.
     confusion_figure(
         proposed, results[proposed]["y_true"], results[proposed]["scores"],
-        threshold, PATHS.figures / "figure_4_1_confusion_matrix.png",
+        threshold, PATHS.figures / "confusion_matrix_section_4_3_2.png",
     )
-    roc_figure(results, PATHS.figures / "figure_4_2_roc_curves.png")
-    comparison_figure(table, PATHS.figures / "figure_4_3_model_comparison.png")
+    roc_figure(results, PATHS.figures / "figure_4_1_roc_curves.png")
+    comparison_figure(table, PATHS.figures / "figure_4_2_model_comparison.png")
+
+    # Figure 4.3's sixth axis is inference speed, recorded by the evaluate
+    # stage. Absent that file the radar is skipped rather than drawn with a
+    # fabricated axis.
+    timings: dict[str, float] = {}
+    records_path = PATHS.outputs / "evaluation_records.json"
+    if records_path.exists():
+        timings = {
+            record["model"]: record.get("microseconds_per_row")
+            for record in json.loads(records_path.read_text())
+        }
+    radar_figure(table, timings, PATHS.figures / "figure_4_3_radar_comparison.png")
+
+    # Figure 4.4 is read from the artefact the evaluate stage wrote, so this
+    # module still never loads a model.
+    importance_path = PATHS.tables / "feature_importance.csv"
+    if importance_path.exists():
+        importance_figure(
+            pd.read_csv(importance_path),
+            PATHS.figures / "figure_4_4_feature_importance.png",
+        )
 
     sweep = threshold_sweep(
         results[proposed]["y_true"], results[proposed]["scores"], config,

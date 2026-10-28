@@ -4,6 +4,53 @@ require("dotenv").config({ path: "../.env" });
 const { SEPOLIA_RPC_URL, DEPLOYER_PRIVATE_KEY, ORACLE_PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
 
 /**
+ * Keeps a malformed key out of the network config.
+ *
+ * Hardhat validates `networks.sepolia.accounts` when the config loads, for
+ * every command — so one bad key makes `hardhat test` and `hardhat compile`
+ * fail too, with an error about Sepolia that has nothing to do with what was
+ * asked. Local work must not depend on deployment credentials being present
+ * and correct.
+ *
+ * The usual mistake is pasting the account *address* rather than its private
+ * key: MetaMask shows the address at the top of the account view, while the
+ * key is behind Account details -> Show private key. An address is 20 bytes
+ * (42 characters with the 0x prefix); a private key is 32 (66 characters).
+ */
+function usableKey(value, label) {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const hex = trimmed.startsWith("0x") ? trimmed.slice(2) : trimmed;
+
+  if (/^[0-9a-fA-F]{64}$/.test(hex)) {
+    return `0x${hex}`;
+  }
+
+  if (/^[0-9a-fA-F]{40}$/.test(hex)) {
+    console.warn(
+      `\n  ${label} looks like an account ADDRESS (20 bytes), not a private `
+      + `key (32 bytes).\n  In MetaMask: Account details -> Show private key. `
+      + `See docs/SETUP-KEYS.md.\n  Sepolia is unavailable until this is `
+      + `corrected; local networks still work.\n`,
+    );
+    return null;
+  }
+
+  console.warn(
+    `\n  ${label} is not a 32-byte hex private key (got ${hex.length} hex `
+    + `characters, expected 64).\n  Sepolia is unavailable until this is `
+    + `corrected; local networks still work.\n`,
+  );
+  return null;
+}
+
+const sepoliaAccounts = [
+  usableKey(DEPLOYER_PRIVATE_KEY, "DEPLOYER_PRIVATE_KEY"),
+  usableKey(ORACLE_PRIVATE_KEY, "ORACLE_PRIVATE_KEY"),
+].filter(Boolean);
+
+/**
  * Solidity is pinned to 0.8.20.
  *
  * Table 3.3 names 0.8.19, but OpenZeppelin Contracts 5.0 — which the same table
@@ -35,7 +82,7 @@ module.exports = {
     },
     sepolia: {
       url: SEPOLIA_RPC_URL || "",
-      accounts: [DEPLOYER_PRIVATE_KEY, ORACLE_PRIVATE_KEY].filter(Boolean),
+      accounts: sepoliaAccounts,
       chainId: 11155111,
     },
   },

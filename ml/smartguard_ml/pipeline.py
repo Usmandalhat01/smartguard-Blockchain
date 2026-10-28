@@ -225,6 +225,23 @@ def stage_evaluate(config: dict[str, Any]) -> None:
     (PATHS.outputs / "evaluation_records.json").write_text(
         json.dumps(records, indent=2) + "\n",
     )
+
+    # Section 4.3.5's ranking. Extracted here because this stage already holds
+    # every fitted estimator; report.py stays unable to load a model.
+    _, proposed = _labels(config)
+    importances = evaluate_stage.feature_importances(
+        proposed, list(X_test.columns),
+    )
+    if importances is not None:
+        importances.to_csv(PATHS.tables / "feature_importance.csv", index=False)
+        top = importances.iloc[0]
+        _log(
+            f"  feature importance for {proposed}: {len(importances)} features, "
+            f"strongest {top['feature']} at {top['importance']:.4f}",
+        )
+    else:
+        _log(f"  {proposed} exposes no feature importances; Figure 4.4 omitted")
+
     _log("wrote prediction files; no metric has been computed yet")
 
 

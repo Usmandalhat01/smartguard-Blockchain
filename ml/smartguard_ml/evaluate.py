@@ -76,3 +76,32 @@ def evaluate_one(
         "microseconds_per_row": round(per_row_ms * 1000, 2),
         "predictions": str(PATHS.predictions(label).relative_to(PATHS.root)),
     }
+
+def feature_importances(label: str, feature_names: list[str]) -> pd.DataFrame | None:
+    """Gini importances for a fitted tree ensemble, written as an artefact.
+
+    Section 4.3.5 reports a feature-importance ranking, and Appendix A records
+    the serialised model and training log as missing — so the ranking could not
+    be regenerated. Extracting it here, rather than in report.py, keeps the
+    constraint that report.py never loads a model: this stage already loads
+    every estimator to score the test partition, so reading one more attribute
+    off the same object costs nothing and leaves report.py reading artefacts
+    only.
+
+    Returns None for estimators that expose no importances, which is the
+    honest outcome for the linear comparators rather than a fabricated one.
+    """
+    pipeline = joblib.load(PATHS.model(label))
+    classifier = pipeline.named_steps["classifier"]
+
+    values = getattr(classifier, "feature_importances_", None)
+    if values is None:
+        return None
+
+    frame = (
+        pd.DataFrame({"feature": feature_names, "importance": values})
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
+    frame["cumulative"] = frame["importance"].cumsum()
+    return frame
