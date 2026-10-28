@@ -369,3 +369,70 @@ transaction-value proxy" rather than an observed Ether value.
 list them among the methodological limitations in Section 3.19. A production
 system would compute the longer velocity windows from its own transaction
 history rather than extrapolating them.
+
+---
+
+## D-014 · Sepolia and the local chain do not charge the same gas
+
+**Status** Measured 28 October 2026
+**Affects** Table 4.2, Section 4.4, Section 4.5
+
+`measure-gas.js` carried this reasoning in its header: gas is determined by the
+EVM cost schedule and the contract bytecode, not by which network executes it,
+so the local figures are the figures Sepolia charges. That is wrong, and the
+deployment receipts are what exposed it. `EscrowContract` cost **1,530,188** gas
+locally and **10,476,800** on Sepolia, for bytecode Etherscan verified as
+byte-identical to the local artefact. Both receipts were confirmed against
+Etherscan independently of the RPC provider, so neither figure is a reporting
+artefact.
+
+Measuring the live lifecycle separated the operations into two populations.
+
+| Operation | Local | Sepolia | Ratio |
+| --------- | ----- | ------- | ----- |
+| `confirmDelivery` | 36,861 | 38,061 | 1.03x |
+| `initiateDispute` | 36,450 | 37,802 | 1.04x |
+| `setRiskThreshold` | 30,104 | 31,304 | 1.04x |
+| `resolveDispute` | 51,941 | 62,273 | 1.20x |
+| `updateRiskScore` | 99,949 | 365,109 | 3.65x |
+| `depositFunds` | 154,875 | 595,275 | 3.84x |
+
+The split is not arbitrary. The three operations that agree to within 4 per cent
+write only to storage slots that already hold a value. The two that diverge by
+nearly four times are the two that allocate slots which were previously zero —
+`updateRiskScore` creates an assessment record, `depositFunds` creates an escrow
+record. `resolveDispute` sits between them because it clears state and transfers
+value.
+
+`setRiskThreshold` is the control, and `scripts/probe-state-cost.js` is the
+experiment: it overwrites a single `uint8` that already holds a value, so it
+allocates nothing. It came in at 1.04x. The surcharge is therefore confined to
+newly allocated state and is not a wholesale difference in the cost schedule.
+Decomposed, Sepolia charges a flat ~1,200 gas more per transaction, plus a large
+additional cost per previously-zero storage slot. Contract deployment is the
+extreme case of the same thing, which is why it diverges furthest: storing code
+is state allocation.
+
+One observation supports the reading directly. The first `updateRiskScore` of
+the run cost **463,029** gas and every subsequent one **365,109**, a difference
+of 97,920 — that first call is the one that moved `lastNonce` off zero.
+
+**What this means for the report.** Table 4.2 must cite
+`docs/evidence/sepolia-measurements.json` for the five operations reachable on a
+public chain, because those are what the system actually costs to run.
+`releaseFunds` and `claimRefund` sit behind a 48-hour and a seven-day time lock
+and cannot be exercised on a chain whose clock cannot be advanced; they remain
+local measurements and must be labelled as such. The local harness keeps its
+purpose — dispersion across 20 repetitions, and the time-locked paths — but it
+is no longer the source for what an operation costs.
+
+**Report edit** Replace Table 4.2 with the Sepolia medians, add a column
+recording which network each figure came from, and state the time-lock reason
+for the two that could not be measured live. Section 4.5 should name Alchemy as
+the provider and quote the measured 9.7–13.4 s submission-to-inclusion latency
+from the same record.
+
+**Caution for the viva.** Do not present the local figures as costs on a public
+network, and do not reconcile the two by averaging them. They measure the same
+bytecode under different state-growth pricing, and the live figure is the one
+that answers "what does this cost to operate".

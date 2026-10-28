@@ -1,0 +1,24 @@
+{
+  "recordedAt": "2026-10-28T22:12:27.164Z",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "escrow": "0x02f7AF12B2Bcf967E9439acea560B60491B57CCD",
+  "question": "Is the Sepolia gas surcharge confined to storage slots that were previously zero?",
+  "control": "setRiskThreshold overwrites an existing slot and allocates nothing.",
+  "localMedian": 30104,
+  "sepolia": {
+    "value": 76,
+    "gasUsed": 31304,
+    "hash": "0x842ef73b59209ac27d173e0f8fef238f5c722081877bdc62e414c9554181a772",
+    "blockNumber": 12015229
+  },
+  "restore": {
+    "value": 75,
+    "gasUsed": 31304,
+    "hash": "0x1d52cd8e779a17ef14efdbbf308cfbd918151af8f037fd6b988864de7c94bd1c",
+    "blockNumber": 12015230
+  },
+  "ratio": 1.04,
+  "surchargeConfinedToNewState": true,
+  "thresholdAfter": 75
+}

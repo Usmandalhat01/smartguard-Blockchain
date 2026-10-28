@@ -1,0 +1,44 @@
+{
+  "recordedAt": "2026-10-28T22:00:14.799Z",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "compiler": {
+    "solc": "0.8.20",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "evmVersion": "paris"
+  },
+  "repository": {
+    "commit": "f9aa8b2413327e2fdbdbc26a439c38a352324801",
+    "dirtyWorkingTree": false
+  },
+  "accounts": {
+    "deployer": "0x7f4779CF268797cF8b6ed04CAFD638d43ffC1335",
+    "oracleOperator": "0x58227C0252DeD8cC66Ff7a7B678992C50DEbd954"
+  },
+  "configuration": {
+    "riskThreshold": 75,
+    "timeLockSeconds": 172800,
+    "holdingPeriodSeconds": 604800
+  },
+  "contracts": {
+    "RiskOracleContract": {
+      "address": "0x7E7Dc2C906ab520097c57B747f0d5b406E6a9aEe",
+      "deploymentTx": "0xabbb7a2232fe646e3a01a179e25afce9e47143d0339419e031ff10f2204b05e7",
+      "blockNumber": 12015168,
+      "gasUsed": "3196982"
+    },
+    "EscrowContract": {
+      "address": "0x02f7AF12B2Bcf967E9439acea560B60491B57CCD",
+      "deploymentTx": "0xaa44258b8a2fbfa1e969ea7c5a750b46f3eca6c3d34470377de21a5b474f7e0f",
+      "blockNumber": 12015169,
+      "gasUsed": "10476800"
+    }
+  },
+  "explorer": {
+    "RiskOracleContract": "https://sepolia.etherscan.io/address/0x7E7Dc2C906ab520097c57B747f0d5b406E6a9aEe",
+    "EscrowContract": "https://sepolia.etherscan.io/address/0x02f7AF12B2Bcf967E9439acea560B60491B57CCD"
+  }
+}

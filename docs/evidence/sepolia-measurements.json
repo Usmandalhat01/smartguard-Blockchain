@@ -1,0 +1,288 @@
+{
+  "recordedAt": "2026-10-28T22:10:27.623Z",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "provider": "Alchemy",
+  "repetitions": 3,
+  "amountEth": "0.0002",
+  "riskScore": 12,
+  "riskThreshold": 75,
+  "contracts": {
+    "RiskOracleContract": "0x7E7Dc2C906ab520097c57B747f0d5b406E6a9aEe",
+    "EscrowContract": "0x02f7AF12B2Bcf967E9439acea560B60491B57CCD"
+  },
+  "accounts": {
+    "buyer": "0x7f4779CF268797cF8b6ed04CAFD638d43ffC1335",
+    "arbitrator": "0x58227C0252DeD8cC66Ff7a7B678992C50DEbd954",
+    "seller": "0x7e806BC978372A7cc0Bd17f9c3a5ecbE1c5680e4"
+  },
+  "feeData": {
+    "gasPriceWei": "17",
+    "gasPriceGwei": "0.000000017"
+  },
+  "notMeasuredHere": {
+    "EscrowContract.releaseFunds": "Behind the 48-hour time lock; a public chain's clock cannot be advanced.",
+    "EscrowContract.refundAfterHolding": "Behind the seven-day holding period; same reason."
+  },
+  "gas": {
+    "RiskOracleContract.updateRiskScore": {
+      "calls": 3,
+      "min": 365097,
+      "max": 463029,
+      "mean": 397745,
+      "median": 365109,
+      "std_dev": 46162.76,
+      "range": 97932
+    },
+    "EscrowContract.depositFunds": {
+      "calls": 3,
+      "min": 595275,
+      "max": 595275,
+      "mean": 595275,
+      "median": 595275,
+      "std_dev": 0,
+      "range": 0
+    },
+    "EscrowContract.confirmDelivery": {
+      "calls": 3,
+      "min": 38049,
+      "max": 38061,
+      "mean": 38057,
+      "median": 38061,
+      "std_dev": 5.66,
+      "range": 12
+    },
+    "EscrowContract.initiateDispute": {
+      "calls": 3,
+      "min": 37790,
+      "max": 37802,
+      "mean": 37798,
+      "median": 37802,
+      "std_dev": 5.66,
+      "range": 12
+    },
+    "EscrowContract.resolveDispute": {
+      "calls": 3,
+      "min": 62264,
+      "max": 62273,
+      "mean": 62270,
+      "median": 62273,
+      "std_dev": 4.24,
+      "range": 9
+    }
+  },
+  "latencyMs": {
+    "RiskOracleContract.updateRiskScore": {
+      "calls": 3,
+      "min": 10985,
+      "max": 12521,
+      "mean": 11794.33,
+      "median": 11877,
+      "std_dev": 629.79,
+      "range": 1536
+    },
+    "EscrowContract.depositFunds": {
+      "calls": 3,
+      "min": 9745,
+      "max": 11641,
+      "mean": 10613.33,
+      "median": 10454,
+      "std_dev": 782.2,
+      "range": 1896
+    },
+    "EscrowContract.confirmDelivery": {
+      "calls": 3,
+      "min": 12202,
+      "max": 13435,
+      "mean": 12796.33,
+      "median": 12752,
+      "std_dev": 504.35,
+      "range": 1233
+    },
+    "EscrowContract.initiateDispute": {
+      "calls": 3,
+      "min": 10972,
+      "max": 12898,
+      "mean": 12240.67,
+      "median": 12852,
+      "std_dev": 897.28,
+      "range": 1926
+    },
+    "EscrowContract.resolveDispute": {
+      "calls": 3,
+      "min": 11141,
+      "max": 12716,
+      "mean": 11919.33,
+      "median": 11901,
+      "std_dev": 643.12,
+      "range": 1575
+    }
+  },
+  "transactions": [
+    {
+      "operation": "RiskOracleContract.updateRiskScore",
+      "hash": "0xe5437460cfce4b4fc9ef7c3900080e34bdd31a03dd7b36d05873c03d97f58f0b",
+      "blockNumber": 12015206,
+      "gasUsed": 463029,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1557,
+      "submitToMineMs": 11877,
+      "explorer": "https://sepolia.etherscan.io/tx/0xe5437460cfce4b4fc9ef7c3900080e34bdd31a03dd7b36d05873c03d97f58f0b"
+    },
+    {
+      "operation": "EscrowContract.depositFunds",
+      "hash": "0x738979874e0b937cb43e294373140ed19480af55c77bac2e0b12524e630068a9",
+      "blockNumber": 12015207,
+      "gasUsed": 595275,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 2063,
+      "submitToMineMs": 10454,
+      "explorer": "https://sepolia.etherscan.io/tx/0x738979874e0b937cb43e294373140ed19480af55c77bac2e0b12524e630068a9"
+    },
+    {
+      "operation": "EscrowContract.confirmDelivery",
+      "hash": "0xa3bd86e9b60a4fd38ce7ed1399a30519a2eff1e619d62bb70da5bc1388c2ec96",
+      "blockNumber": 12015208,
+      "gasUsed": 38061,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1661,
+      "submitToMineMs": 13435,
+      "explorer": "https://sepolia.etherscan.io/tx/0xa3bd86e9b60a4fd38ce7ed1399a30519a2eff1e619d62bb70da5bc1388c2ec96"
+    },
+    {
+      "operation": "EscrowContract.initiateDispute",
+      "hash": "0x8779c2c6dd447fa39629a5035ed63b44609cf0afe241893621710e3a07b5e7d2",
+      "blockNumber": 12015209,
+      "gasUsed": 37802,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1744,
+      "submitToMineMs": 10972,
+      "explorer": "https://sepolia.etherscan.io/tx/0x8779c2c6dd447fa39629a5035ed63b44609cf0afe241893621710e3a07b5e7d2"
+    },
+    {
+      "operation": "EscrowContract.resolveDispute",
+      "hash": "0x67c888cb7dc49b876741c7d3bef6ba1a4fbacfb80650f2f9f97ab3039e7db517",
+      "blockNumber": 12015210,
+      "gasUsed": 62273,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1553,
+      "submitToMineMs": 12716,
+      "explorer": "https://sepolia.etherscan.io/tx/0x67c888cb7dc49b876741c7d3bef6ba1a4fbacfb80650f2f9f97ab3039e7db517"
+    },
+    {
+      "operation": "RiskOracleContract.updateRiskScore",
+      "hash": "0x553456d5cc0da2be10dbb3413c1f1b36f97502ceca3e373a8d5c7ceb9c77b2b6",
+      "blockNumber": 12015211,
+      "gasUsed": 365109,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1047,
+      "submitToMineMs": 12521,
+      "explorer": "https://sepolia.etherscan.io/tx/0x553456d5cc0da2be10dbb3413c1f1b36f97502ceca3e373a8d5c7ceb9c77b2b6"
+    },
+    {
+      "operation": "EscrowContract.depositFunds",
+      "hash": "0xe162901084db50fec497af145015074a5c2800bf23d502f02d401d81011076ff",
+      "blockNumber": 12015212,
+      "gasUsed": 595275,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1881,
+      "submitToMineMs": 9745,
+      "explorer": "https://sepolia.etherscan.io/tx/0xe162901084db50fec497af145015074a5c2800bf23d502f02d401d81011076ff"
+    },
+    {
+      "operation": "EscrowContract.confirmDelivery",
+      "hash": "0x8b5f58407fa9ec865049379a32801fde9b3ba41c04612c033d04503a7f33a39e",
+      "blockNumber": 12015213,
+      "gasUsed": 38061,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1112,
+      "submitToMineMs": 12202,
+      "explorer": "https://sepolia.etherscan.io/tx/0x8b5f58407fa9ec865049379a32801fde9b3ba41c04612c033d04503a7f33a39e"
+    },
+    {
+      "operation": "EscrowContract.initiateDispute",
+      "hash": "0x4e2e7c6bf8fc701e0f677a2f757a67fed960a38a973fa52b862683c40115df32",
+      "blockNumber": 12015214,
+      "gasUsed": 37802,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1585,
+      "submitToMineMs": 12898,
+      "explorer": "https://sepolia.etherscan.io/tx/0x4e2e7c6bf8fc701e0f677a2f757a67fed960a38a973fa52b862683c40115df32"
+    },
+    {
+      "operation": "EscrowContract.resolveDispute",
+      "hash": "0x15720c52f7b86be8c740b7e076827aab2d2a89260c16d74d606ca491fe0b10b4",
+      "blockNumber": 12015215,
+      "gasUsed": 62273,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1597,
+      "submitToMineMs": 11141,
+      "explorer": "https://sepolia.etherscan.io/tx/0x15720c52f7b86be8c740b7e076827aab2d2a89260c16d74d606ca491fe0b10b4"
+    },
+    {
+      "operation": "RiskOracleContract.updateRiskScore",
+      "hash": "0x4a51a76866fc75e3d0c8b5e372cf5ccfff872cc5c75e9d3678569fbf31214a18",
+      "blockNumber": 12015216,
+      "gasUsed": 365097,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1303,
+      "submitToMineMs": 10985,
+      "explorer": "https://sepolia.etherscan.io/tx/0x4a51a76866fc75e3d0c8b5e372cf5ccfff872cc5c75e9d3678569fbf31214a18"
+    },
+    {
+      "operation": "EscrowContract.depositFunds",
+      "hash": "0xb037a0655deccbbfbaeef20a58d9ae0d7af2b691a1a7507063d531e35ccfa81a",
+      "blockNumber": 12015217,
+      "gasUsed": 595275,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1404,
+      "submitToMineMs": 11641,
+      "explorer": "https://sepolia.etherscan.io/tx/0xb037a0655deccbbfbaeef20a58d9ae0d7af2b691a1a7507063d531e35ccfa81a"
+    },
+    {
+      "operation": "EscrowContract.confirmDelivery",
+      "hash": "0x7f477254832eaccf85c493b1faaec76f8aa65a4e79612aca73b46396928d90a6",
+      "blockNumber": 12015218,
+      "gasUsed": 38049,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1021,
+      "submitToMineMs": 12752,
+      "explorer": "https://sepolia.etherscan.io/tx/0x7f477254832eaccf85c493b1faaec76f8aa65a4e79612aca73b46396928d90a6"
+    },
+    {
+      "operation": "EscrowContract.initiateDispute",
+      "hash": "0x248eb83e79bee2865b5ccbee4b10b594ca21d30757672f7f03ea01b4359773d4",
+      "blockNumber": 12015219,
+      "gasUsed": 37790,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1788,
+      "submitToMineMs": 12852,
+      "explorer": "https://sepolia.etherscan.io/tx/0x248eb83e79bee2865b5ccbee4b10b594ca21d30757672f7f03ea01b4359773d4"
+    },
+    {
+      "operation": "EscrowContract.resolveDispute",
+      "hash": "0x229fe2615416a454f60b87100ff6c1b2235b144f1a2b32350b4a5fb8309a61a6",
+      "blockNumber": 12015220,
+      "gasUsed": 62264,
+      "effectiveGasPrice": "1000000000",
+      "status": 1,
+      "submitToSendMs": 1382,
+      "submitToMineMs": 11901,
+      "explorer": "https://sepolia.etherscan.io/tx/0x229fe2615416a454f60b87100ff6c1b2235b144f1a2b32350b4a5fb8309a61a6"
+    }
+  ]
+}

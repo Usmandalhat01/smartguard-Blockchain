@@ -11,10 +11,21 @@
  * through complete escrow lifecycles and retains every receipt, so the
  * dispersion statistics are computed from the population.
  *
- * It runs against the local Hardhat network. Gas is fixed by the EVM cost
- * schedule and the contract bytecode, not by which network executes it, so
- * these units are the units Sepolia charges. What the network decides is the
- * gas *price*, which is recorded separately and applied at the end.
+ * It runs against the local Hardhat network, which is why it can measure the
+ * time-locked paths: releaseFunds and claimRefund sit behind a 48-hour and a
+ * seven-day wait that only a chain whose clock can be advanced will yield.
+ *
+ * These units are NOT the units Sepolia charges. An earlier version of this
+ * comment asserted they were, on the reasoning that gas depends on the cost
+ * schedule and the bytecode rather than on the network. The live measurement
+ * refutes it: see docs/evidence/sepolia-measurements.json and D-014. Sepolia
+ * adds a flat ~1,200 gas per transaction and a large surcharge for every
+ * storage slot that was previously zero, so operations that allocate state
+ * cost 3.6x to 3.8x these figures there, while operations that only overwrite
+ * existing slots agree to within 4 per cent.
+ *
+ * Cite this script for dispersion across repetitions and for the time-locked
+ * operations. Cite the Sepolia record for what an operation actually costs.
  *
  *   npx hardhat run scripts/measure-gas.js
  *
