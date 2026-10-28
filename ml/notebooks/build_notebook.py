@@ -93,13 +93,14 @@ Two rules are followed throughout:
 | 5 | Did oversampling stay inside the training partition? | 3.13.3 |
 | 6 | How were hyperparameters chosen, and when was validation touched? | 3.13.4 |
 | 7 | What does the model do on data it has never seen? | 4.3.1–4.3.5 |
-| 8 | Is 0.75 an optimum or a configuration value? | 4.3.6 |
-| 9 | Is Random Forest *significantly* better, or just ranked higher? | 4.3.4, Objective 4 |
-| 10 | What did SMOTE actually buy? | 2.9 |
-| 11 | Does the smart contract enforce the risk gate? | 3.11, 4.4 |
-| 12 | How does a score reach the chain? | 3.14 |
-| 13 | Is access control real, or a front-end suggestion? | 3.15.2 |
-| 14 | Which Appendix A gaps are now closed? | Appendix A, Table A1 |
+| 8 | How much of that performance did the simulated features supply? | 3.12.5, 4.3.1 |
+| 9 | Is 0.75 an optimum or a configuration value? | 4.3.6 |
+| 10 | Is Random Forest *significantly* better, or just ranked higher? | 4.3.4, Objective 4 |
+| 11 | What did SMOTE actually buy? | 2.9 |
+| 12 | Does the smart contract enforce the risk gate? | 3.11, 4.4 |
+| 13 | How does a score reach the chain? | 3.14 |
+| 14 | Is access control real, or a front-end suggestion? | 3.15.2 |
+| 15 | Which Appendix A gaps are now closed? | Appendix A, Table A1 |
 """)
 
 # ===========================================================================
@@ -797,12 +798,171 @@ show_figure("figure_4_4_feature_importance.png",
 """)
 
 # ===========================================================================
-# 8. Threshold
+# 8. Feature provenance
 # ===========================================================================
 
 md(r"""
 ---
-## 8. The 0.75 threshold — configuration value or optimum?
+## 8. How much of that performance did the simulation supply?
+
+Section 7 reports an accuracy of 1.0000 and an ROC AUC of 1.0000 for four of the
+six classifiers. **Logistic regression is one of them.** That should stop a
+reader, because a linear model cannot separate PaySim's observed variables
+perfectly — if it could, fraud detection would be a solved problem and this
+project would have no subject.
+
+The explanation is in the design, stated plainly in Section 3.12.5. Eight of the
+eighteen features are *simulated proxies* for escrow context PaySim does not
+carry, and they are drawn **conditionally on the fraud label**:
+
+> `counterparty_reputation` — Beta(a=2.0, b=5.0) for fraudulent rows,
+> Beta(a=9.0, b=1.6) otherwise
+
+Those two densities have means of 0.29 and 0.85 and very little overlap. A
+feature constructed that way does not *correlate* with fraud; it **encodes** it.
+Four such features together make the label recoverable almost exactly, which is
+what an AUC of 1.0000 is reporting.
+
+This is not an error in the implementation, and it is not hidden — the report
+specifies it, and `features.py` records the distribution for each proxy. Section
+3.12.5 even gives the reason: a proxy carrying no signal would make the escrow
+context decorative. The problem is one of *interpretation*. The resulting figure
+cannot be presented as the system's fraud-detection performance, because the
+quantity being recovered is the generator's own input.
+
+So this section asks a narrower, answerable question: **what does the model
+achieve on the features that are actually observed?** Two measurements follow.
+""")
+
+code(r"""
+# How much does each feature know on its own? Computed against the held-out
+# labels, with orientation folded away — a perfectly anti-correlated feature is
+# just as informative as a perfectly correlated one.
+auc = pd.read_csv(PATHS.tables / "feature_provenance_auc.csv")
+
+print("Single-feature ROC AUC on the held-out test partition")
+print("=" * 72)
+print(auc.to_string(index=False, formatters={"auc_alone": "{:.4f}".format}))
+""")
+
+code(r"""
+# Grouped by where the feature came from. 0.5 is a coin toss.
+summary = (auc.groupby("provenance")["auc_alone"]
+           .agg(features="count", best="max", mean="mean")
+           .sort_values("best", ascending=False))
+
+print("Separability by provenance")
+print("=" * 72)
+print(summary.to_string(formatters={"best": "{:.4f}".format,
+                                    "mean": "{:.4f}".format}))
+
+simulated = auc[auc["provenance"] == "simulated"]
+observed = auc[auc["provenance"] != "simulated"]
+print(f"\nBest simulated proxy alone: {simulated.iloc[0]['feature']} "
+      f"at AUC {simulated.iloc[0]['auc_alone']:.4f}")
+print(f"Best observed feature alone: {observed.iloc[0]['feature']} "
+      f"at AUC {observed.iloc[0]['auc_alone']:.4f}")
+""")
+
+code(r"""
+# Share of the fitted model's importance that rests on label-conditioned
+# features. This is the number that decides whether the headline metric is a
+# measurement or a restatement.
+importance = pd.read_csv(PATHS.tables / "feature_importance.csv")
+prov = auc.set_index("feature")["provenance"]
+importance["provenance"] = importance["feature"].map(prov)
+
+share = (importance.groupby("provenance")["importance"].sum()
+         .sort_values(ascending=False))
+
+print("Importance by provenance, proposed model")
+print("=" * 72)
+for name, value in share.items():
+    print(f"  {name:<12} {value:.4f}  ({value * 100:.1f}%)")
+
+flat = share.get("simulated", 0.0)
+print(f"\n{flat * 100:.1f}% of the model's decision rests on features that were "
+      f"generated\nfrom the answer.")
+""")
+
+md(r"""
+### The ablation
+
+The second measurement is the one that produces a usable figure. The proposed
+estimator is refitted with the simulated proxies removed, on the **same training
+partition**, with the **same hyperparameters** the grid search already chose, and
+scored at the **same 0.75 threshold** against the **same held-out rows**.
+
+Only the feature set changes, so the difference is attributable to provenance
+and to nothing else. Re-running the search would have confounded the feature set
+with the configuration.
+""")
+
+code(r"""
+analysis = json.loads((PATHS.outputs / "provenance_analysis.json").read_text())
+comparison = pd.read_csv(PATHS.tables / "provenance_ablation.csv")
+
+print(f"Dropped {len(analysis['dropped_features'])} simulated features:")
+print(f"  {', '.join(analysis['dropped_features'])}")
+print(f"\nRetained {len(analysis['retained_features'])}:")
+print(f"  {', '.join(analysis['retained_features'])}")
+print(f"\nSame split ({analysis['training_rows']:,} training rows, "
+      f"{analysis['test_rows']:,} test rows), same threshold "
+      f"{analysis['threshold']}.")
+print(f"Refit took {analysis['fit_seconds']:.0f}s.")
+""")
+
+code(r"""
+print("What the simulation was worth")
+print("=" * 88)
+print(comparison.to_string(index=False, float_format=lambda v: f"{v:.4f}"))
+
+if len(comparison) == 2:
+    full = comparison[comparison["feature_set"] == "all_18_features"].iloc[0]
+    obs = comparison[comparison["feature_set"] == "observed_only"].iloc[0]
+    print()
+    for metric in ("f1_fraud", "roc_auc", "precision_fraud", "recall_fraud"):
+        delta = full[metric] - obs[metric]
+        print(f"  {metric:<18} {full[metric]:.4f} -> {obs[metric]:.4f}"
+              f"   ({delta:+.4f})")
+    cm = analysis["metrics"]
+    print(f"\nObserved-only confusion matrix at threshold "
+          f"{analysis['threshold']}:")
+    print(f"  true negatives  {cm['true_negatives']:>9,}")
+    print(f"  false positives {cm['false_positives']:>9,}")
+    print(f"  false negatives {cm['false_negatives']:>9,}")
+    print(f"  true positives  {cm['true_positives']:>9,}")
+""")
+
+md(r"""
+### What Chapter Four should say
+
+Whatever the numbers above turn out to be, the reporting rule is the same.
+
+1. The **observed-only** figure is the one that answers "how well does this
+   detect fraud", because it is the only one computed without the label in the
+   inputs. It belongs in Section 4.3.1 as the headline.
+2. The **all-eighteen** figure is a property of the simulation, not of the
+   model. If it is quoted at all, it must be labelled as including
+   label-conditioned proxies, and never compared against published PaySim
+   results — those authors did not add features built from the answer.
+3. Section 3.19 should carry the limitation in one sentence: the escrow-context
+   features are simulated, so the system's accuracy on real escrow data is
+   unmeasured and would require a deployment that collects the real equivalents.
+
+Stating this plainly is also the defensive move. An examiner who notices an AUC
+of 1.0000 unprompted will question everything else in the chapter; the same
+examiner, shown that the author found it, measured it and bounded it, has reason
+to trust the rest.
+""")
+
+# ===========================================================================
+# 9. Threshold
+# ===========================================================================
+
+md(r"""
+---
+## 9. The 0.75 threshold — configuration value or optimum?
 
 Section 4.3.6 is careful: 0.75 "cannot presently be reproduced as an empirically
 validated optimum" and "is treated as a prototype configuration value". It asks
@@ -889,12 +1049,12 @@ print(f"  {100 * caught / (caught + missed):.2f}% of fraud intercepted")
 """)
 
 # ===========================================================================
-# 9. Statistical test
+# 10. Statistical test
 # ===========================================================================
 
 md(r"""
 ---
-## 9. Objective Four — is the ranking significant?
+## 10. Objective Four — is the ranking significant?
 
 This is the objective the report scores most harshly. Table 4.5:
 
@@ -952,12 +1112,12 @@ print(textwrap.fill(
 """)
 
 # ===========================================================================
-# 10. Ablation
+# 11. Ablation
 # ===========================================================================
 
 md(r"""
 ---
-## 10. What oversampling bought
+## 11. What oversampling bought
 
 Section 2.9 identifies, as a gap in the literature, the absence of a measured
 effect for class balancing — and Chapter Four never reported one for this
@@ -1008,12 +1168,12 @@ else:
 """)
 
 # ===========================================================================
-# 11. Smart contracts
+# 12. Smart contracts
 # ===========================================================================
 
 md(r"""
 ---
-## 11. The blockchain layer
+## 12. The blockchain layer
 
 The machine-learning score is advisory until something enforces it. Section 1.2
 puts the problem precisely:
@@ -1054,7 +1214,7 @@ worth reading closely:
    closed: if the intelligence layer has not spoken, no funds move. A default of
    "allow" would convert any outage of the scoring service into an open gate.
 3. The comparison is `>` against the configured threshold, which is the same
-   number the sweep in Section 8 examined.
+   number the sweep in Section 9 examined.
 """)
 
 code(r"""
@@ -1083,7 +1243,7 @@ oracle_src = (CONTRACTS / "RiskOracleContract.sol").read_text()
 
 # The production controls Section 3.15.2 specifies, and Appendix A lists as
 # untested: nonce handling, replay rejection, timestamp expiry, key rotation.
-for marker in ("function submitRiskScore", "function setOracleOperator"):
+for marker in ("function updateRiskScore", "function setOracleOperator"):
     start = oracle_src.find(marker)
     if start == -1:
         continue
@@ -1142,41 +1302,183 @@ else:
 """)
 
 md(r"""
+### Deployment (Section 4.4)
+
+Appendix A records "the deployed contract addresses, transaction hashes and
+public verification status" as unavailable. They are properties of a deployment
+that happened, so no amount of local testing produces them.
+
+Both contracts are deployed to Sepolia and verified on Etherscan. The record
+below is written by the deployment script rather than transcribed, and it
+carries the commit the bytecode was built from — without that, an address on a
+block explorer cannot be tied to any particular source.
+""")
+
+code(r"""
+EVIDENCE = REPO_ROOT / "docs" / "evidence"
+deployment_path = EVIDENCE / "deployment.sepolia.json"
+
+if not deployment_path.exists():
+    print("[absent] docs/evidence/deployment.sepolia.json")
+    print("Deploy with: cd contracts && "
+          "npx hardhat run scripts/deploy.js --network sepolia")
+else:
+    d = json.loads(deployment_path.read_text())
+    print(f"network    {d['network']} (chainId {d['chainId']})")
+    print(f"deployed   {d['recordedAt']}")
+    print(f"compiler   solc {d['compiler']['solc']}, optimizer "
+          f"{d['compiler']['optimizer']['runs']} runs")
+    print(f"commit     {d['repository']['commit']}")
+    print(f"clean tree {not d['repository']['dirtyWorkingTree']}")
+    print()
+    for name, info in d["contracts"].items():
+        print(f"{name}")
+        print(f"  address  {info['address']}")
+        print(f"  tx       {info['deploymentTx']}")
+        print(f"  block    {info['blockNumber']:,}")
+        print(f"  gas      {int(info['gasUsed']):,}")
+        print(f"  explorer {d['explorer'][name]}")
+        print()
+    print(f"configuration  threshold {d['configuration']['riskThreshold']}, "
+          f"time lock {d['configuration']['timeLockSeconds'] // 3600}h, "
+          f"holding {d['configuration']['holdingPeriodSeconds'] // 86400}d")
+""")
+
+md(r"""
 ### Gas measurement (Table 4.2)
 
 Appendix A on Table 4.2: "the per-execution receipts, testing date, gas price,
 ETH/USD conversion rate, median, minimum, maximum, and standard deviation are
 unavailable in the submitted material."
 
-Those are all properties of *how the measurement is taken*, not of the chain.
-The Hardhat gas reporter records a per-call distribution across the whole test
-run, which is what turns a single mean into the descriptive statistics the
-appendix asks for.
+There are two measurements here, and the distinction between them is itself a
+finding. `scripts/measure-gas.js` runs 20 complete lifecycles on the local
+Hardhat network and retains all 300 receipts, which is where the dispersion
+statistics come from. It also reaches `releaseFunds` and `claimRefund`, which
+sit behind a 48-hour and a seven-day time lock — a public chain's clock cannot
+be advanced, so those two are measurable *only* locally.
+
+That script originally claimed its figures were the units Sepolia charges, on
+the reasoning that gas depends on the cost schedule and the bytecode rather than
+on the network. **The deployment receipts refuted it.** `EscrowContract` cost
+1,530,188 gas locally and 10,476,800 on Sepolia, for bytecode Etherscan verified
+as identical — and Etherscan confirms the receipt independently of the RPC
+provider, so it is not a reporting artefact.
 """)
 
 code(r"""
-gas_report = REPO_ROOT / "docs" / "evidence" / "gas-report.txt"
+local_path = EVIDENCE / "gas-measurements.json"
+live_path = EVIDENCE / "sepolia-measurements.json"
+
+if not (local_path.exists() and live_path.exists()):
+    print("[absent] run both harnesses:")
+    print("  cd contracts && npx hardhat run scripts/measure-gas.js")
+    print("  cd contracts && npx hardhat run scripts/measure-sepolia.js "
+          "--network sepolia")
+else:
+    local = {e["method"]: e for e in json.loads(local_path.read_text())["methods"]}
+    live = json.loads(live_path.read_text())["gas"]
+
+    rows = []
+    for name in sorted(set(local) | set(live)):
+        l = local.get(name, {}).get("median")
+        s = live.get(name, {}).get("median")
+        rows.append({
+            "operation": name.replace("Contract.", "."),
+            "local": l,
+            "sepolia": s,
+            "ratio": round(s / l, 2) if (l and s) else None,
+        })
+
+    frame = pd.DataFrame(rows)
+    print("Gas per operation — median, by network")
+    print("=" * 76)
+    print(frame.to_string(index=False, na_rep="—",
+                          formatters={"local": lambda v: f"{v:,.0f}",
+                                      "sepolia": lambda v: f"{v:,.0f}"}))
+""")
+
+md(r"""
+The ratios separate into two populations, and the split is not arbitrary.
+
+Operations that only **overwrite storage slots which already hold a value** agree
+across the two networks to within 4 per cent. Operations that **allocate slots
+that were previously zero** cost between three and four times more on Sepolia —
+`updateRiskScore` creates an assessment record, `depositFunds` creates an escrow
+record. Contract deployment is the extreme case of the same thing, because
+storing code is state allocation.
+
+`scripts/probe-state-cost.js` is the control that makes this an explanation
+rather than a coincidence. `setRiskThreshold` overwrites a single `uint8` that
+already holds a value, so it allocates nothing at all. If the whole cost schedule
+differed, it would diverge; if the surcharge is confined to new state, it cannot.
+""")
+
+code(r"""
+probe_path = EVIDENCE / "state-cost-probe.json"
+if not probe_path.exists():
+    print("[absent] run: cd contracts && "
+          "npx hardhat run scripts/probe-state-cost.js --network sepolia")
+else:
+    probe = json.loads(probe_path.read_text())
+    print(f"question  {probe['question']}")
+    print(f"control   {probe['control']}")
+    print()
+    print(f"  local            {probe['localMedian']:>9,} gas")
+    print(f"  sepolia          {probe['sepolia']['gasUsed']:>9,} gas")
+    print(f"  ratio            {probe['ratio']:>9.2f}x")
+    print()
+    print(f"surcharge confined to newly allocated state: "
+          f"{probe['surchargeConfinedToNewState']}")
+    print(f"threshold restored to {probe['thresholdAfter']} "
+          f"(Section 3.11.3 fixes it at 75)")
+""")
+
+code(r"""
+# Per-transaction receipts and latency from the live run. Appendix A asks for
+# the hashes and for latency against a named provider; both are properties of a
+# public network that an in-process chain cannot supply at all.
+if live_path.exists():
+    record = json.loads(live_path.read_text())
+    print(f"provider     {record['provider']}")
+    print(f"recorded     {record['recordedAt']}")
+    print(f"repetitions  {record['repetitions']} lifecycles, "
+          f"{len(record['transactions'])} transactions")
+    print(f"gas price    {record['feeData']['gasPriceGwei']} gwei")
+    print()
+
+    lat = pd.DataFrame([
+        {"operation": k.replace("Contract.", "."), **v}
+        for k, v in record["latencyMs"].items()
+    ])
+    print("Submission to inclusion (ms)")
+    print("=" * 76)
+    print(lat[["operation", "min", "median", "max", "calls"]]
+          .to_string(index=False))
+    print()
+    print("Not measurable on a public chain:")
+    for op, why in record["notMeasuredHere"].items():
+        print(f"  {op.replace('Contract.', '.')}")
+        print(f"    {why}")
+""")
+
+code(r"""
+# The full local report, which carries the dispersion across 20 repetitions.
+gas_report = EVIDENCE / "gas-report.txt"
 if gas_report.exists():
     print(gas_report.read_text())
 else:
     print("[absent] docs/evidence/gas-report.txt")
-    print()
-    print("Generate it with:")
-    print("  cd contracts && REPORT_GAS=true npx hardhat test")
-    print()
-    print("Record alongside it, because Appendix A lists each as missing:")
-    print("  the testing date, the gas price assumed, and the ETH/USD rate used")
-    print("  for the dollar column — Table 4.2 currently assumes 15 Gwei and")
-    print("  USD 2,650.00 without stating when that rate held.")
+    print("Generate with: cd contracts && REPORT_GAS=true npx hardhat test")
 """)
 
 # ===========================================================================
-# 12. Oracle bridge
+# 13. Oracle bridge
 # ===========================================================================
 
 md(r"""
 ---
-## 12. The oracle bridge
+## 13. The oracle bridge
 
 Section 3.14 describes the component that carries a score from the FastAPI
 service to the chain. Section 2.5.3 frames why it is the hard part: a smart
@@ -1222,12 +1524,12 @@ print(parity.read_text() if parity.exists() else "[absent] api/tests/test_featur
 """)
 
 # ===========================================================================
-# 13. RBAC
+# 14. RBAC
 # ===========================================================================
 
 md(r"""
 ---
-## 13. Access control
+## 14. Access control
 
 Section 3.15.2 specifies role-based access control across buyer, seller and
 arbitrator. Section 1.2 has already explained why a front-end check is not
@@ -1272,12 +1574,12 @@ else:
 """)
 
 # ===========================================================================
-# 14. Evidence matrix
+# 15. Evidence matrix
 # ===========================================================================
 
 md(r"""
 ---
-## 14. Appendix A, item by item
+## 15. Appendix A, item by item
 
 Appendix A exists to stop "descriptive prototype results from being interpreted
 as independently reproducible measurements". The table below takes each gap it
@@ -1305,6 +1607,26 @@ print(frame.to_string(index=False, formatters={"bytes": "{:,}".format}))
 code(r"""
 manifest = json.loads(PATHS.manifest.read_text())
 
+# Resolved from the evidence directory rather than asserted, so a row cannot
+# claim a gap is closed by an artefact that is not actually present.
+EVIDENCE = ML_ROOT.parent / "docs" / "evidence"
+
+deployment_file = EVIDENCE / "deployment.sepolia.json"
+DEPLOYED = deployment_file.exists()
+if DEPLOYED:
+    d = json.loads(deployment_file.read_text())
+    DEPLOYMENT_NOTE = (
+        f"{d['network']} chainId {d['chainId']}; "
+        f"escrow {d['contracts']['EscrowContract']['address']}, "
+        f"oracle {d['contracts']['RiskOracleContract']['address']}; "
+        f"deployed at commit {(d['repository']['commit'] or '?')[:12]}"
+    )
+else:
+    DEPLOYMENT_NOTE = "OPEN — requires the Sepolia deployment"
+
+SLITHER = (EVIDENCE / "slither-report.txt").exists()
+LIVE_RUN = (EVIDENCE / "sepolia-measurements.json").exists()
+
 GAPS = [
     ("random seed", True, f"config.yaml seed = {CONFIG['seed']}"),
     ("complete parameter-search grid", True,
@@ -1330,12 +1652,21 @@ GAPS = [
      "environment_record() in run_manifest.json"),
     ("measured effect of oversampling", True,
      "ablation: proposed model with and without SMOTE on one split"),
-    ("contract addresses and transaction hashes", False,
-     "OPEN — requires the Sepolia deployment"),
-    ("per-execution gas receipts and dispersion", False,
-     "OPEN — run the gas reporter, record date, gas price and ETH/USD rate"),
-    ("complete Slither output", False, "OPEN — run Slither and retain the report"),
-    ("latency and throughput run-level logs", False,
+    ("provenance of the reported accuracy", True,
+     "provenance_analysis.json — the simulated proxies' contribution measured "
+     "and separated, Section 8"),
+    ("contract addresses and transaction hashes", DEPLOYED,
+     DEPLOYMENT_NOTE),
+    ("per-execution gas receipts and dispersion", True,
+     "gas-measurements.json, 300 local receipts; sepolia-measurements.json, "
+     "15 live receipts with hashes, gas price and date"),
+    ("complete Slither output", SLITHER,
+     "docs/evidence/slither-report.txt, retained in full"
+     if SLITHER else "OPEN — run Slither and retain the report"),
+    ("submission-to-inclusion latency on a named provider", LIVE_RUN,
+     "sepolia-measurements.json, per-transaction wall clock against Alchemy"
+     if LIVE_RUN else "OPEN — requires the live measurement run"),
+    ("throughput under concurrent load", False,
      "OPEN — requires the load test against the deployed contracts"),
     ("formal usability study", False,
      "OPEN — out of scope by Section 1.5; reserved for future work"),

@@ -8,6 +8,7 @@ in-memory state.
     python -m smartguard_ml.pipeline split
     python -m smartguard_ml.pipeline train
     python -m smartguard_ml.pipeline evaluate
+    python -m smartguard_ml.pipeline provenance
     python -m smartguard_ml.pipeline report
     python -m smartguard_ml.pipeline all
 """
@@ -26,6 +27,7 @@ import pandas as pd
 
 from . import evaluate as evaluate_stage
 from . import features as feature_stage
+from . import provenance as provenance_stage
 from . import report as report_stage
 from . import split as split_stage
 from . import train as train_stage
@@ -245,6 +247,77 @@ def stage_evaluate(config: dict[str, Any]) -> None:
     _log("wrote prediction files; no metric has been computed yet")
 
 
+# ----------------------------------------------------------- provenance ----
+
+def stage_provenance(config: dict[str, Any]) -> None:
+    """Separates what the model learned from what the simulation supplied.
+
+    Table 4.1 reports an ROC AUC of 1.0000 for four of six classifiers, logistic
+    regression among them. That is not attainable on PaySim's observed variables,
+    and Section 3.12.5 says why it is attainable here: eight of the eighteen
+    features are drawn from distributions conditioned on the fraud label. This
+    stage measures how much of the reported performance that accounts for, so
+    Chapter Four can state a defensible figure instead of a circular one.
+    """
+    settings = config.get("provenance", {})
+    if not settings.get("enabled", True):
+        _log("provenance analysis disabled in config")
+        return
+
+    drop = list(settings.get("drop", ["simulated"]))
+    X_train, y_train, _, _, X_test, y_test = _load_partitions(config)
+    _, proposed = _labels(config)
+    threshold = config["threshold"]["configured"]
+
+    # --- 1. each feature's separability on its own -------------------------
+    auc = provenance_stage.single_feature_auc(X_test, y_test)
+    auc.to_csv(PATHS.tables / "feature_provenance_auc.csv", index=False)
+
+    best = auc.iloc[0]
+    _log(f"strongest single feature: {best['feature']} ({best['provenance']}) "
+         f"at AUC {best['auc_alone']:.4f} alone")
+    for group, rows in auc.groupby("provenance"):
+        _log(f"  {group:<10} n={len(rows):<3} max AUC {rows['auc_alone'].max():.4f} "
+             f"mean {rows['auc_alone'].mean():.4f}")
+
+    # --- 2. the same estimator without the simulated proxies ---------------
+    _log(f"refitting {proposed} on non-{'/'.join(drop)} features only")
+    record = provenance_stage.ablate(
+        proposed, config["models"][proposed], config,
+        X_train, y_train, X_test, y_test, drop, log=_log,
+    )
+
+    full = provenance_stage.full_feature_metrics(proposed, threshold)
+    record["full_feature_metrics"] = full
+
+    path = PATHS.outputs / "provenance_analysis.json"
+    path.write_text(json.dumps(record, indent=2) + "\n")
+
+    ablated = record["metrics"]
+    rows = []
+    for name, metrics in (("all_18_features", full), ("observed_only", ablated)):
+        if metrics is None:
+            continue
+        rows.append({"feature_set": name, **{
+            k: metrics[k] for k in
+            ("accuracy", "precision_fraud", "recall_fraud", "f1_fraud", "roc_auc")
+        }})
+    comparison = pd.DataFrame(rows)
+    comparison.to_csv(PATHS.tables / "provenance_ablation.csv", index=False)
+
+    if full is not None:
+        _log(f"  all 18 features:  F1 {full['f1_fraud']:.4f} · "
+             f"AUC {full['roc_auc']:.4f}")
+    _log(f"  observed only:    F1 {ablated['f1_fraud']:.4f} · "
+         f"AUC {ablated['roc_auc']:.4f}")
+    if full is not None:
+        _log(f"  the simulated proxies account for "
+             f"{full['f1_fraud'] - ablated['f1_fraud']:+.4f} F1 and "
+             f"{full['roc_auc'] - ablated['roc_auc']:+.4f} AUC")
+
+    _log(f"wrote {path.relative_to(PATHS.root)}")
+
+
 # --------------------------------------------------------------- report ----
 
 def stage_report(config: dict[str, Any]) -> None:
@@ -312,6 +385,7 @@ STAGES = {
     "split": stage_split,
     "train": stage_train,
     "evaluate": stage_evaluate,
+    "provenance": stage_provenance,
     "report": stage_report,
 }
 

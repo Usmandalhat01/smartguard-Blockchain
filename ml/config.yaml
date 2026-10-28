@@ -106,6 +106,23 @@ ablation:
   enabled: true
   model: random_forest
 
+provenance:
+  # Section 3.12.5 states that the simulated proxies are drawn conditionally on
+  # the fraud label. A feature generated from the label carries the label, which
+  # is why Table 4.1 reports an ROC AUC of 1.0000 for logistic regression — a
+  # figure no linear model attains on PaySim's observed variables.
+  #
+  # This stage refits the proposed estimator on the features that are observed,
+  # or derived from observations, and nothing else. The gap between that and
+  # Table 4.1 is the share of the reported performance the simulation supplied,
+  # and it is the figure Chapter Four can defend.
+  #
+  # The refit is a full one on the training partition, so the stage costs about
+  # as long as training the proposed model. It is kept in `all` deliberately:
+  # anyone reproducing the experiment should arrive at this finding too.
+  enabled: true
+  drop: [simulated]
+
 threshold:
   # Section 4.3.6. The operating point is a *configuration value* until the
   # sensitivity analysis is regenerated from saved probabilities — which is what
