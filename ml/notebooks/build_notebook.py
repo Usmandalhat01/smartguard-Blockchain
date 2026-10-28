@@ -279,7 +279,7 @@ spec_table = pd.DataFrame([{
     "feature": s.name,
     "provenance": s.provenance,
     "dtype": s.dtype,
-    "definition": s.description,
+    "definition": s.rule,
 } for s in FEATURE_SPECS])
 
 pd.set_option("display.max_colwidth", 78)
@@ -1424,17 +1424,28 @@ if not (local_path.exists() and live_path.exists()):
           "--network sepolia")
 else:
     local = {e["method"]: e for e in json.loads(local_path.read_text())["methods"]}
-    live = json.loads(live_path.read_text())["gas"]
+    live = {k: v["median"] for k, v in json.loads(live_path.read_text())["gas"].items()}
+
+    # The deployment figures live in the deployment record rather than the
+    # lifecycle record, and they are the pair that exposed the divergence in the
+    # first place, so they belong in this table.
+    if deployment_path.exists():
+        for name, info in json.loads(deployment_path.read_text())["contracts"].items():
+            live[f"{name}.deployment"] = int(info["gasUsed"])
 
     rows = []
     for name in sorted(set(local) | set(live)):
         l = local.get(name, {}).get("median")
-        s = live.get(name, {}).get("median")
+        s = live.get(name)
         rows.append({
             "operation": name.replace("Contract.", "."),
             "local": l,
             "sepolia": s,
             "ratio": round(s / l, 2) if (l and s) else None,
+            "allocates new state": (
+                "yes" if name.split(".")[-1] in
+                ("deployment", "depositFunds", "updateRiskScore") else "no"
+            ),
         })
 
     frame = pd.DataFrame(rows)
@@ -1539,12 +1550,18 @@ without redeploying.
 """)
 
 code(r"""
+# The application layer's own modules. Vendored directories are excluded
+# explicitly: rglob descends into .venv, where site-packages carries binary
+# test fixtures that are not text at all.
+SKIP = {".venv", "node_modules", "__pycache__", "site-packages", "tests"}
+
 api_dir = REPO_ROOT / "api"
 for path in sorted(api_dir.rglob("*.py")):
-    if "__pycache__" in str(path) or "/tests/" in str(path):
+    if SKIP & set(path.relative_to(api_dir).parts):
         continue
     rel = path.relative_to(REPO_ROOT)
-    print(f"{str(rel):<48} {len(path.read_text().splitlines()):>4} lines")
+    lines = len(path.read_text(encoding="utf-8").splitlines())
+    print(f"{str(rel):<48} {lines:>4} lines")
 """)
 
 md(r"""
