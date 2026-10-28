@@ -1637,6 +1637,68 @@ else:
     print("[not run] api/tests is absent.")
 """)
 
+md(r"""
+### The interface, and the refusal
+
+Table A1 records that for every tested scenario "the only available artefact is
+aggregate count in Table 4.3 only", and no interface evidence was retained at
+all. `web/scripts/capture-screenshots.js` drives a real browser through each
+role and keeps the images.
+
+One of them carries more weight than the rest. A signed-in **buyer** requests
+`/admin`, and the server redirects to `/forbidden`. That is the claim in Section
+3.15.2 demonstrated rather than described: the session cookie is HttpOnly and
+signed with a server-held key, so the browser cannot assert a role it does not
+hold, and no amount of client-side tampering reaches the admin workspace.
+
+Each role runs in a fresh browser context, so one role's cookie never appears in
+another role's screenshot — otherwise the evidence would prove nothing.
+""")
+
+code(r"""
+from IPython.display import Image, display
+
+SHOTS_DIR = REPO_ROOT / "docs" / "evidence" / "screenshots"
+manifest_path = SHOTS_DIR / "manifest.json"
+
+if not manifest_path.exists():
+    print("[absent] docs/evidence/screenshots/manifest.json")
+    print("Capture with the web app and API running:")
+    print("  cd web && node scripts/capture-screenshots.js")
+else:
+    shots = json.loads(manifest_path.read_text())
+    print(f"captured   {shots['recordedAt']}")
+    print(f"browser    {shots['browser']}")
+    print(f"viewport   {shots['viewport']['width']}x{shots['viewport']['height']} "
+          f"@{shots['viewport']['deviceScaleFactor']}x")
+    print(f"images     {len(shots['screenshots'])}")
+    if shots.get("failures"):
+        print(f"\nFAILURES ({len(shots['failures'])}):")
+        for f in shots["failures"]:
+            print(f"  {f}")
+    print()
+    for s in shots["screenshots"]:
+        arrow = "" if s["requestedRoute"] == s["landedRoute"] else \
+            f"  ->  {s['landedRoute']}"
+        print(f"{s['name']:<24} {s['role']:<16} {s['requestedRoute']}{arrow}")
+""")
+
+code(r"""
+# The access-control refusal, inline. If this image shows the admin workspace
+# rather than the forbidden page, the control did not fire.
+if manifest_path.exists():
+    refusal = SHOTS_DIR / "05-rbac-refusal.png"
+    if refusal.exists():
+        entry = next((s for s in json.loads(manifest_path.read_text())["screenshots"]
+                      if s["name"] == "05-rbac-refusal"), None)
+        if entry:
+            print(f"buyer requested {entry['requestedRoute']} and landed on "
+                  f"{entry['landedRoute']}")
+        display(Image(filename=str(refusal), width=900))
+    else:
+        print("[absent] 05-rbac-refusal.png")
+""")
+
 # ===========================================================================
 # 15. Evidence matrix
 # ===========================================================================

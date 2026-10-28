@@ -34,15 +34,35 @@ cd contracts && npx hardhat run scripts/measure-gas.js   # table 4.2
 | Section 4.3.4 | Figure 4.3 | `ml/outputs/figures/figure_4_3_radar_comparison.png` |
 | Section 4.3.5 | Figure 4.4 | `ml/outputs/figures/figure_4_4_feature_importance.png` |
 | Section 4.3.6 | Figure 4.5 | `ml/outputs/figures/figure_4_5_threshold_sensitivity.png` |
-| Section 4.4 | Figure 4.6 | Plot from `docs/evidence/gas-measurements.json` |
-| Section 4.5 | Figure 4.7 | Requires the load test — still open |
+| Section 4.4 | Figure 4.6 | Plot from `docs/evidence/sepolia-measurements.json` for the five live operations, `gas-measurements.json` for the two time-locked ones. See D-014 — the two sources do not agree and must not be mixed in one series without the network labelled. |
+| Section 4.5 | Figure 4.7 | `docs/evidence/load-test.json` — requests/second and p95 against concurrency, three repetitions per level |
+| Section 4.5 | *(new)* | `docs/evidence/sepolia-measurements.json` — submission-to-inclusion latency per operation against Alchemy, which is the on-chain half of Section 4.5 and cannot come from a local chain |
+| Section 4.6 | *(new)* | `docs/evidence/screenshots/` — eleven captures with a manifest naming the claim each one evidences |
 
 | Report location | Table | Artefact |
 |---|---|---|
-| Section 4.3.4 | Table 4.1 | `ml/outputs/tables/table_4_1_classification.csv` |
-| Section 4.4 | Table 4.2 | `docs/evidence/gas-measurements.json` |
+| Section 4.3.4 | Table 4.1 | `ml/outputs/tables/table_4_1_classification.csv`. **Carries four new columns**: `score_kind`, `comparable_at_shared_threshold`, `f1_at_own_best_threshold`, `own_best_threshold`. The linear SVM is scored on a scaled margin, so its F1 at the shared 0.75 cut-off (0.0026) is meaningless while its own best is 0.9935. Reporting the first without the second says the model cannot detect fraud, which is false. |
+| Section 4.4 | Table 4.2 | **Rewrite required.** `docs/evidence/sepolia-measurements.json` for live costs; `gas-measurements.json` for dispersion and the time-locked paths. Add a column naming the network per row. D-014. |
 | Section 4.6 | Table 4.3 | Hardhat and pytest run output |
 | Section 4.3.4 | *(new)* | `ml/outputs/tables/statistical_comparison.json` — the McNemar test Objective Four was marked down for lacking |
+
+### Provenance and what the accuracy actually measures
+
+| Report location | Artefact | Notes |
+| --- | --- | --- |
+| Section 4.3.1 | `ml/outputs/provenance_analysis.json` | **Edit required.** The headline figures must not be presented as fraud-detection capability. D-015. |
+| Section 3.12.4 | `ml/outputs/tables/feature_provenance_auc.csv` | Four derived features measure AUC 0.500 alone and take ~0 importance. They are computed but inert, so listing all eighteen as contributing overstates the feature set. |
+| Section 3.12.5 | `ml/outputs/tables/provenance_ablation.csv` | The simulated proxies are label-conditioned *and* redundant: dropping all seven moves F1 from 0.9951 to 0.9959. Both facts belong in the text. |
+| Section 3.19 | `ml/outputs/provenance_analysis.json`, `dataset_separability` | PaySim's fraud is a near-deterministic account drain. One boolean rule reaches 99.98% precision and 97.70% recall with no model. This is the measured basis for the limitation. |
+
+The short version, for whoever writes Section 4.3.1: every classifier lands
+between F1 0.976 and 0.999 at its own operating point, because the dataset is
+recoverable by one `if` statement. The defensible claim is that the pipeline
+reproduces PaySim's known separability, which validates the implementation —
+the partition, the balancing, the threshold, the serving path — and evidences
+nothing about real escrow fraud.
+
+---
 
 ### The confusion matrix
 
