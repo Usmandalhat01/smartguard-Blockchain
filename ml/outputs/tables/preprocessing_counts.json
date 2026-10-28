@@ -1,0 +1,12 @@
+{
+  "raw_rows": 6362620,
+  "restrict_to_fraud_types": false,
+  "rows_after_type_filter": null,
+  "duplicate_rows_found": 0,
+  "missing_values_found": 0,
+  "rows_used": 6362620,
+  "fraud_rows_used": 8213,
+  "sample_frac": 1.0,
+  "source_file": "PS_20174392719_1491204439457_log.csv",
+  "is_development_standin": false
+}

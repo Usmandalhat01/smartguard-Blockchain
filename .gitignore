@@ -49,7 +49,13 @@ coverage/
 # Development stand-in for PaySim. Regenerate with:
 #   python ml/scripts/make_sample_paysim.py
 ml/data/raw/SAMPLE_paysim.csv
-# Experiment outputs are committed once they come from real PaySim — they are
-# the evidence Chapter Four cites. Until then they are stand-in output; the run
-# manifest records which. Commit them deliberately with `git add -f`.
-ml/outputs/
+# Experiment outputs are the evidence Chapter Four cites, and the run of
+# 28 October 2026 came from the real PaySim log — run_manifest.json records
+# `is_development_standin: false` over all 6,362,620 rows — so they are now
+# tracked. The whole directory is 608 KiB; the large intermediates that are not
+# worth versioning are excluded above by extension (.joblib, .parquet, .npz).
+#
+# Appendix A lists these artefacts as missing from the submitted material. A
+# repository that regenerates them but does not carry them would leave that
+# gap open for anyone who cannot run a 70-minute pipeline.
+!ml/outputs/

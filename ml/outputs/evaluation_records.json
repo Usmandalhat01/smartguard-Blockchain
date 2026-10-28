@@ -1,0 +1,56 @@
+[
+  {
+    "model": "random_forest",
+    "score_kind": "probability",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 4.9061,
+    "microseconds_per_row": 5.14,
+    "predictions": "artifacts/predictions_random_forest.parquet"
+  },
+  {
+    "model": "logistic_regression",
+    "score_kind": "probability",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 0.25,
+    "microseconds_per_row": 0.26,
+    "predictions": "artifacts/predictions_logistic_regression.parquet"
+  },
+  {
+    "model": "decision_tree",
+    "score_kind": "probability",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 0.0651,
+    "microseconds_per_row": 0.07,
+    "predictions": "artifacts/predictions_decision_tree.parquet"
+  },
+  {
+    "model": "linear_svm",
+    "score_kind": "scaled_margin",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 0.136,
+    "microseconds_per_row": 0.14,
+    "predictions": "artifacts/predictions_linear_svm.parquet"
+  },
+  {
+    "model": "gradient_boosting",
+    "score_kind": "probability",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 2.2795,
+    "microseconds_per_row": 2.39,
+    "predictions": "artifacts/predictions_gradient_boosting.parquet"
+  },
+  {
+    "model": "random_forest_no_smote",
+    "score_kind": "probability",
+    "test_rows": 954393,
+    "test_fraud": 1232,
+    "inference_seconds": 5.26,
+    "microseconds_per_row": 5.51,
+    "predictions": "artifacts/predictions_random_forest_no_smote.parquet"
+  }
+]

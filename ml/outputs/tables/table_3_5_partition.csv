@@ -1,0 +1,5 @@
+Partition,Proportion,Legitimate,Fraudulent,Total,Fraud ratio (%)
+Full dataset,100.0%,6354407,8213,6362620,0.1291
+Training,70.0%,4448085,5749,4453834,0.1291
+Validation,15.0%,953161,1232,954393,0.1291
+Held-out test,15.0%,953161,1232,954393,0.1291

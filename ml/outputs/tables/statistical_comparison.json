@@ -1,0 +1,67 @@
+[
+  {
+    "proposed": "random_forest",
+    "comparator": "logistic_regression",
+    "b_only_a_correct": 16,
+    "c_only_b_correct": 10,
+    "discordant": 26,
+    "statistic": 0.9615,
+    "p_value": 0.3267995676689632,
+    "method": "chi2_continuity_corrected",
+    "note": null,
+    "significant": false,
+    "interpretation": "The difference between random_forest and logistic_regression is not statistically significant (McNemar, p = 0.327, alpha = 0.05) on 26 discordant test rows. No ranking between them is supported by this evidence."
+  },
+  {
+    "proposed": "random_forest",
+    "comparator": "decision_tree",
+    "b_only_a_correct": 50,
+    "c_only_b_correct": 7,
+    "discordant": 57,
+    "statistic": 30.9474,
+    "p_value": 2.6512132235211866e-08,
+    "method": "chi2_continuity_corrected",
+    "note": null,
+    "significant": true,
+    "interpretation": "The difference between random_forest and decision_tree is statistically significant (McNemar, p = 2.65e-08 < 0.05), favouring random_forest on 57 discordant test rows."
+  },
+  {
+    "proposed": "random_forest",
+    "comparator": "linear_svm",
+    "b_only_a_correct": 952109,
+    "c_only_b_correct": 12,
+    "discordant": 952121,
+    "statistic": 952071.0007,
+    "p_value": 0.0,
+    "method": "chi2_continuity_corrected",
+    "note": null,
+    "significant": true,
+    "interpretation": "The difference between random_forest and linear_svm is statistically significant (McNemar, p = 0 < 0.05), favouring random_forest on 952,121 discordant test rows."
+  },
+  {
+    "proposed": "random_forest",
+    "comparator": "gradient_boosting",
+    "b_only_a_correct": 5,
+    "c_only_b_correct": 9,
+    "discordant": 14,
+    "statistic": null,
+    "p_value": 0.4239501953125,
+    "method": "exact_binomial",
+    "note": "Fewer than 25 discordant pairs; exact test used.",
+    "significant": false,
+    "interpretation": "The difference between random_forest and gradient_boosting is not statistically significant (McNemar, p = 0.424, alpha = 0.05) on 14 discordant test rows. No ranking between them is supported by this evidence."
+  },
+  {
+    "proposed": "random_forest",
+    "comparator": "random_forest_no_smote",
+    "b_only_a_correct": 48,
+    "c_only_b_correct": 3,
+    "discordant": 51,
+    "statistic": 37.9608,
+    "p_value": 7.218098051079765e-10,
+    "method": "chi2_continuity_corrected",
+    "note": null,
+    "significant": true,
+    "interpretation": "The difference between random_forest and random_forest_no_smote is statistically significant (McNemar, p = 7.22e-10 < 0.05), favouring random_forest on 51 discordant test rows."
+  }
+]

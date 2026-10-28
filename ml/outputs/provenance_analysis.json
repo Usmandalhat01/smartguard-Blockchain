@@ -1,0 +1,135 @@
+{
+  "model": "random_forest",
+  "variant": "observed_and_derived_only",
+  "dropped_provenances": [
+    "simulated"
+  ],
+  "dropped_features": [
+    "geographic_risk",
+    "counterparty_reputation",
+    "device_consistency",
+    "account_age_days",
+    "prior_dispute_rate",
+    "seller_dispute_rate",
+    "prior_completed_rate"
+  ],
+  "retained_features": [
+    "transaction_amount",
+    "amount_deviation",
+    "velocity_24h",
+    "velocity_7d",
+    "velocity_30d",
+    "office_hours_indicator",
+    "transaction_channel",
+    "amount_rounded",
+    "transaction_type",
+    "amount_to_account_ratio",
+    "step_time"
+  ],
+  "threshold": 0.75,
+  "training_rows": 4453834,
+  "test_rows": 954393,
+  "fit_seconds": 1371.07,
+  "metrics": {
+    "accuracy": 0.9999895221360593,
+    "precision_fraud": 0.9943365695792881,
+    "recall_fraud": 0.997564935064935,
+    "f1_fraud": 0.9959481361426256,
+    "roc_auc": 0.9993973078395595,
+    "true_negatives": 953154,
+    "false_positives": 7,
+    "false_negatives": 3,
+    "true_positives": 1229
+  },
+  "artifact": {
+    "model": "artifacts/model_random_forest_observed_only.joblib",
+    "sha256": "509b6d66d58937bfa86eb6bdbddbdb15b64fc0632a7e4088e0881624b63ba845"
+  },
+  "importances": [
+    {
+      "feature": "amount_to_account_ratio",
+      "importance": 0.6049361228602598
+    },
+    {
+      "feature": "transaction_type",
+      "importance": 0.22064028392878351
+    },
+    {
+      "feature": "transaction_amount",
+      "importance": 0.0857076518185129
+    },
+    {
+      "feature": "step_time",
+      "importance": 0.06071117313991396
+    },
+    {
+      "feature": "transaction_channel",
+      "importance": 0.018033642317212488
+    },
+    {
+      "feature": "amount_rounded",
+      "importance": 0.008162247640653852
+    },
+    {
+      "feature": "office_hours_indicator",
+      "importance": 0.0016969165205386494
+    },
+    {
+      "feature": "amount_deviation",
+      "importance": 5.4519754020430916e-05
+    },
+    {
+      "feature": "velocity_7d",
+      "importance": 3.446184283005702e-05
+    },
+    {
+      "feature": "velocity_30d",
+      "importance": 2.2135331967396976e-05
+    },
+    {
+      "feature": "velocity_24h",
+      "importance": 8.448453069973896e-07
+    }
+  ],
+  "full_feature_metrics": {
+    "accuracy": 0.9999874265632711,
+    "precision_fraud": 1.0,
+    "recall_fraud": 0.9902597402597403,
+    "f1_fraud": 0.9951060358890702,
+    "roc_auc": 0.9999999957421237,
+    "true_negatives": 953161,
+    "false_positives": 0,
+    "false_negatives": 12,
+    "true_positives": 1220
+  },
+  "dataset_separability": {
+    "rows": 6362620,
+    "fraud_rows": 8213,
+    "signatures": {
+      "amount_equals_old_balance": {
+        "description": "The transaction drained the originating account exactly.",
+        "share_of_fraud": 0.9782052843053696,
+        "share_of_legitimate": 1.1015976785874747e-06,
+        "count_fraud": 8034,
+        "count_legitimate": 7
+      },
+      "new_balance_zero": {
+        "description": "The originating account was left empty.",
+        "share_of_fraud": 0.9805186898818946,
+        "share_of_legitimate": 0.566774051457516
+      },
+      "drained_and_emptied": {
+        "description": "Both conditions together, used as the rule below.",
+        "share_of_fraud": 0.9769877024229879,
+        "share_of_legitimate": 3.1474219388213567e-07
+      }
+    },
+    "rule_without_a_model": {
+      "rule": "amount == oldbalanceOrg and newbalanceOrig == 0",
+      "predicted_positive": 8026,
+      "precision": 0.9997508098679292,
+      "recall": 0.9769877024229879
+    },
+    "interpretation": "PaySim's fraud is a near-deterministic account drain, so a single boolean rule recovers the label at high precision and recall with no model at all. The classification metrics in Chapter Four are therefore bounded by the simulator's construction and should not be read as evidence of performance on real escrow fraud."
+  }
+}
