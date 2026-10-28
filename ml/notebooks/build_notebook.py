@@ -803,41 +803,37 @@ show_figure("figure_4_4_feature_importance.png",
 
 md(r"""
 ---
-## 8. How much of that performance did the simulation supply?
+## 8. Where does the near-perfect accuracy come from?
 
 Section 7 reports an accuracy of 1.0000 and an ROC AUC of 1.0000 for four of the
 six classifiers. **Logistic regression is one of them.** That should stop a
-reader, because a linear model cannot separate PaySim's observed variables
-perfectly — if it could, fraud detection would be a solved problem and this
-project would have no subject.
+reader: a linear model does not separate a hard problem perfectly, and if fraud
+detection were linearly separable it would not be an open research area.
 
-The explanation is in the design, stated plainly in Section 3.12.5. Eight of the
-eighteen features are *simulated proxies* for escrow context PaySim does not
-carry, and they are drawn **conditionally on the fraud label**:
+So the figure needs an explanation before it can be reported. This section works
+through three measurements, and the honest path runs through a wrong answer
+first — which is recorded here because the wrong answer is the one most readers
+will reach for, and the measurement that kills it is the interesting part.
+
+**The obvious suspect.** Section 3.12.5 states that eight of the eighteen
+features are *simulated proxies* for escrow context PaySim does not carry, and
+that they are drawn **conditionally on the fraud label**:
 
 > `counterparty_reputation` — Beta(a=2.0, b=5.0) for fraudulent rows,
 > Beta(a=9.0, b=1.6) otherwise
 
-Those two densities have means of 0.29 and 0.85 and very little overlap. A
-feature constructed that way does not *correlate* with fraud; it **encodes** it.
-Four such features together make the label recoverable almost exactly, which is
-what an AUC of 1.0000 is reporting.
+Those densities have means of 0.29 and 0.85 and barely overlap. A feature built
+that way does not correlate with the label, it encodes it. The natural inference
+is that the headline metric is circular: the model is recovering the generator's
+own input.
 
-This is not an error in the implementation, and it is not hidden — the report
-specifies it, and `features.py` records the distribution for each proxy. Section
-3.12.5 even gives the reason: a proxy carrying no signal would make the escrow
-context decorative. The problem is one of *interpretation*. The resulting figure
-cannot be presented as the system's fraud-detection performance, because the
-quantity being recovered is the generator's own input.
-
-So this section asks a narrower, answerable question: **what does the model
-achieve on the features that are actually observed?** Two measurements follow.
+That inference is wrong, and measurement 2 is what refutes it.
 """)
 
 code(r"""
-# How much does each feature know on its own? Computed against the held-out
-# labels, with orientation folded away — a perfectly anti-correlated feature is
-# just as informative as a perfectly correlated one.
+# Measurement 1: how much does each feature know on its own? Scored against the
+# held-out labels, with orientation folded away — a perfectly anti-correlated
+# feature is as informative as a perfectly correlated one.
 auc = pd.read_csv(PATHS.tables / "feature_provenance_auc.csv")
 
 print("Single-feature ROC AUC on the held-out test partition")
@@ -846,56 +842,38 @@ print(auc.to_string(index=False, formatters={"auc_alone": "{:.4f}".format}))
 """)
 
 code(r"""
-# Grouped by where the feature came from. 0.5 is a coin toss.
 summary = (auc.groupby("provenance")["auc_alone"]
            .agg(features="count", best="max", mean="mean")
            .sort_values("best", ascending=False))
 
-print("Separability by provenance")
+print("Separability by provenance — 0.5 is a coin toss")
 print("=" * 72)
 print(summary.to_string(formatters={"best": "{:.4f}".format,
                                     "mean": "{:.4f}".format}))
 
 simulated = auc[auc["provenance"] == "simulated"]
 observed = auc[auc["provenance"] != "simulated"]
-print(f"\nBest simulated proxy alone: {simulated.iloc[0]['feature']} "
+print(f"\nBest simulated proxy alone:  {simulated.iloc[0]['feature']} "
       f"at AUC {simulated.iloc[0]['auc_alone']:.4f}")
 print(f"Best observed feature alone: {observed.iloc[0]['feature']} "
       f"at AUC {observed.iloc[0]['auc_alone']:.4f}")
-""")
-
-code(r"""
-# Share of the fitted model's importance that rests on label-conditioned
-# features. This is the number that decides whether the headline metric is a
-# measurement or a restatement.
-importance = pd.read_csv(PATHS.tables / "feature_importance.csv")
-prov = auc.set_index("feature")["provenance"]
-importance["provenance"] = importance["feature"].map(prov)
-
-share = (importance.groupby("provenance")["importance"].sum()
-         .sort_values(ascending=False))
-
-print("Importance by provenance, proposed model")
-print("=" * 72)
-for name, value in share.items():
-    print(f"  {name:<12} {value:.4f}  ({value * 100:.1f}%)")
-
-flat = share.get("simulated", 0.0)
-print(f"\n{flat * 100:.1f}% of the model's decision rests on features that were "
-      f"generated\nfrom the answer.")
+print()
+print("So the proxies do encode the label, exactly as Section 3.12.5 implies.")
+print("That makes them suspicious. It does not make them responsible.")
 """)
 
 md(r"""
-### The ablation
+### Measurement 2 — the ablation that refutes the obvious answer
 
-The second measurement is the one that produces a usable figure. The proposed
-estimator is refitted with the simulated proxies removed, on the **same training
-partition**, with the **same hyperparameters** the grid search already chose, and
-scored at the **same 0.75 threshold** against the **same held-out rows**.
+If the simulated proxies were supplying the performance, removing them would
+destroy it. So remove them.
 
-Only the feature set changes, so the difference is attributable to provenance
-and to nothing else. Re-running the search would have confounded the feature set
-with the configuration.
+The proposed estimator is refitted on the observed and derived features only,
+with the **same training partition**, the **same hyperparameters** the grid
+search already chose, and the **same 0.75 threshold** against the **same
+held-out rows**. Only the feature set changes, so the difference is attributable
+to provenance and nothing else. Re-running the search would have confounded the
+feature set with the configuration.
 """)
 
 code(r"""
@@ -909,11 +887,10 @@ print(f"  {', '.join(analysis['retained_features'])}")
 print(f"\nSame split ({analysis['training_rows']:,} training rows, "
       f"{analysis['test_rows']:,} test rows), same threshold "
       f"{analysis['threshold']}.")
-print(f"Refit took {analysis['fit_seconds']:.0f}s.")
 """)
 
 code(r"""
-print("What the simulation was worth")
+print("What the simulated proxies were actually worth")
 print("=" * 88)
 print(comparison.to_string(index=False, float_format=lambda v: f"{v:.4f}"))
 
@@ -922,38 +899,108 @@ if len(comparison) == 2:
     obs = comparison[comparison["feature_set"] == "observed_only"].iloc[0]
     print()
     for metric in ("f1_fraud", "roc_auc", "precision_fraud", "recall_fraud"):
-        delta = full[metric] - obs[metric]
+        delta = obs[metric] - full[metric]
         print(f"  {metric:<18} {full[metric]:.4f} -> {obs[metric]:.4f}"
-              f"   ({delta:+.4f})")
-    cm = analysis["metrics"]
-    print(f"\nObserved-only confusion matrix at threshold "
-          f"{analysis['threshold']}:")
-    print(f"  true negatives  {cm['true_negatives']:>9,}")
-    print(f"  false positives {cm['false_positives']:>9,}")
-    print(f"  false negatives {cm['false_negatives']:>9,}")
-    print(f"  true positives  {cm['true_positives']:>9,}")
+              f"   ({delta:+.4f} when the proxies are removed)")
+
+    cm, fm = analysis["metrics"], analysis["full_feature_metrics"]
+    print(f"\nConfusion at threshold {analysis['threshold']}, "
+          f"{analysis['test_rows']:,} rows:")
+    print(f"{'':<18}{'all 18':>12}{'observed only':>16}")
+    for key, label in (("true_positives", "true positives"),
+                       ("false_positives", "false positives"),
+                       ("false_negatives", "false negatives")):
+        print(f"  {label:<16}{fm[key]:>12,}{cm[key]:>16,}")
+""")
+
+code(r"""
+# Which features does the observed-only model actually lean on? This is the
+# question that points at the answer.
+imps = pd.DataFrame(analysis["importances"])
+print("Observed-only model — importance")
+print("=" * 72)
+for row in imps.itertuples():
+    bar = "#" * int(round(row.importance * 60))
+    print(f"  {row.feature:<26} {row.importance:.4f}  {bar}")
+""")
+
+md(r"""
+### Measurement 3 — it was the dataset all along
+
+The ablation settles it: removing every label-conditioned feature leaves
+performance unchanged. A tree ensemble leans on whatever separates most cleanly,
+and when the proxies are taken away it finds equivalent signal elsewhere. So the
+proxies were **redundant, not load-bearing**, and the explanation has to lie in
+the data that remains.
+
+The importance ranking above says where to look: `amount_to_account_ratio`
+dominates the observed-only model. That ratio is `amount / (balance + 1)`, and
+it is large exactly when a transaction empties the account it came from — which
+is how PaySim generates fraud in the first place.
+
+The check below uses no model, no features and no training. It is one boolean
+expression over PaySim's raw columns.
+""")
+
+code(r"""
+sep = analysis["dataset_separability"]
+
+print(f"PaySim: {sep['rows']:,} rows, {sep['fraud_rows']:,} fraudulent")
+print("=" * 78)
+for key, sig in sep["signatures"].items():
+    print(f"\n{key}")
+    print(f"  {sig['description']}")
+    print(f"    among fraud       {sig['share_of_fraud'] * 100:7.2f}%")
+    print(f"    among legitimate  {sig['share_of_legitimate'] * 100:7.4f}%")
+
+rule = sep["rule_without_a_model"]
+print("\n" + "=" * 78)
+print(f"A single rule, with no model at all:")
+print(f"  {rule['rule']}")
+print(f"    flags      {rule['predicted_positive']:,} rows")
+print(f"    precision  {rule['precision'] * 100:.2f}%")
+print(f"    recall     {rule['recall'] * 100:.2f}%")
 """)
 
 md(r"""
 ### What Chapter Four should say
 
-Whatever the numbers above turn out to be, the reporting rule is the same.
+One boolean expression recovers the label at the precision and recall printed
+above. The Random Forest's 0.995 F1 is therefore **not a measure of modelling
+skill** — it is a measure of how deterministically the PaySim simulator
+constructs its fraud. Any competent classifier lands in the same place, which is
+exactly what Table 4.1 shows: five of six models cluster within a few
+thousandths of each other, and Section 10's McNemar tests cannot separate the
+top three.
 
-1. The **observed-only** figure is the one that answers "how well does this
-   detect fraud", because it is the only one computed without the label in the
-   inputs. It belongs in Section 4.3.1 as the headline.
-2. The **all-eighteen** figure is a property of the simulation, not of the
-   model. If it is quoted at all, it must be labelled as including
-   label-conditioned proxies, and never compared against published PaySim
-   results — those authors did not add features built from the answer.
-3. Section 3.19 should carry the limitation in one sentence: the escrow-context
-   features are simulated, so the system's accuracy on real escrow data is
-   unmeasured and would require a deployment that collects the real equivalents.
+Three consequences, and the first is the one that keeps the chapter defensible.
 
-Stating this plainly is also the defensive move. An examiner who notices an AUC
-of 1.0000 unprompted will question everything else in the chapter; the same
-examiner, shown that the author found it, measured it and bounded it, has reason
-to trust the rest.
+1. **Section 4.3.1 must not present these figures as fraud-detection
+   capability.** They bound what is achievable *on this dataset*, and the bound
+   is set by the simulator. The correct framing is that the pipeline reproduces
+   PaySim's known separability, which validates the *implementation* — the
+   partition, the balancing, the threshold, the serving path — without
+   evidencing real-world accuracy.
+2. **Section 3.19 gains a limitation with a measured basis**: PaySim's fraud is a
+   near-deterministic account drain, so the reported metrics transfer to real
+   escrow fraud only to the extent that real fraud shares that signature, which
+   is unmeasured and unlikely. Establishing real-world performance needs
+   labelled escrow data, which this project does not have.
+3. **The simulated proxies remain a stated limitation**, but a narrower one than
+   they first appear. They are label-conditioned, which is why they top the
+   importance ranking when present; they are also redundant, which is why
+   removing them costs nothing. Section 3.12.5 should say both.
+
+There is also a smaller finding worth a sentence. Four derived features —
+`velocity_24h`, `velocity_7d`, `velocity_30d` and `amount_deviation` — sit at
+AUC 0.500 alone and receive essentially zero importance in both models. They are
+computed but inert, and Section 3.12.4 should say so rather than listing all
+eighteen as contributing.
+
+Stating all of this is also the defensive move. An examiner who notices an AUC
+of 1.0000 unprompted will question everything else in the chapter. The same
+examiner, shown that the author found it, chased the wrong explanation, measured
+it, and then found the right one, has reason to trust the rest.
 """)
 
 # ===========================================================================

@@ -213,3 +213,77 @@ def full_feature_metrics(label: str, threshold: float) -> dict[str, Any] | None:
     return _metrics(
         frame["y_true"].to_numpy(), frame["score"].to_numpy(), threshold,
     )
+
+
+# ------------------------------------------------- dataset separability ----
+
+# The columns PaySim ships. Read directly from the source CSV rather than from
+# the feature matrix, because the question is about the *dataset*, not about
+# what feature engineering made of it.
+_RAW_COLUMNS = ["type", "amount", "oldbalanceOrg", "newbalanceOrig", "isFraud"]
+
+
+def dataset_separability(source_csv: Any) -> dict[str, Any]:
+    """How much of the label PaySim's raw columns already determine.
+
+    This exists because the provenance ablation produced a result that needed
+    explaining. Dropping every label-conditioned proxy did not reduce
+    performance, which rules out the simulated features as the source of the
+    near-perfect metrics and leaves the dataset itself.
+
+    PaySim generates fraud as a complete drain of the originating account, so
+    `amount` equals `oldbalanceOrg` almost whenever the row is fraudulent and
+    almost never otherwise. That is a deterministic signature, and a single
+    hand-written rule recovers the label from it without any model. The
+    measurement below is what licenses Section 3.19 to say the reported accuracy
+    is a property of the simulator rather than evidence about real fraud.
+    """
+    frame = pd.read_csv(source_csv, usecols=_RAW_COLUMNS)
+    fraud = frame["isFraud"].to_numpy() == 1
+
+    drained = np.isclose(frame["amount"].to_numpy(),
+                         frame["oldbalanceOrg"].to_numpy())
+    emptied = frame["newbalanceOrig"].to_numpy() == 0
+    rule = drained & emptied
+
+    def share(mask: np.ndarray, within: np.ndarray) -> float:
+        return float(mask[within].mean()) if within.any() else float("nan")
+
+    matched = int(rule.sum())
+    return {
+        "rows": int(len(frame)),
+        "fraud_rows": int(fraud.sum()),
+        "signatures": {
+            "amount_equals_old_balance": {
+                "description": "The transaction drained the originating account exactly.",
+                "share_of_fraud": share(drained, fraud),
+                "share_of_legitimate": share(drained, ~fraud),
+                "count_fraud": int(drained[fraud].sum()),
+                "count_legitimate": int(drained[~fraud].sum()),
+            },
+            "new_balance_zero": {
+                "description": "The originating account was left empty.",
+                "share_of_fraud": share(emptied, fraud),
+                "share_of_legitimate": share(emptied, ~fraud),
+            },
+            "drained_and_emptied": {
+                "description": "Both conditions together, used as the rule below.",
+                "share_of_fraud": share(rule, fraud),
+                "share_of_legitimate": share(rule, ~fraud),
+            },
+        },
+        # No model, no training, no features: one boolean expression.
+        "rule_without_a_model": {
+            "rule": "amount == oldbalanceOrg and newbalanceOrig == 0",
+            "predicted_positive": matched,
+            "precision": float(fraud[rule].mean()) if matched else float("nan"),
+            "recall": share(rule, fraud),
+        },
+        "interpretation": (
+            "PaySim's fraud is a near-deterministic account drain, so a single "
+            "boolean rule recovers the label at high precision and recall with "
+            "no model at all. The classification metrics in Chapter Four are "
+            "therefore bounded by the simulator's construction and should not be "
+            "read as evidence of performance on real escrow fraud."
+        ),
+    }

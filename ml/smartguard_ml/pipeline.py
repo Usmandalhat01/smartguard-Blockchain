@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -281,16 +282,53 @@ def stage_provenance(config: dict[str, Any]) -> None:
              f"mean {rows['auc_alone'].mean():.4f}")
 
     # --- 2. the same estimator without the simulated proxies ---------------
-    _log(f"refitting {proposed} on non-{'/'.join(drop)} features only")
-    record = provenance_stage.ablate(
-        proposed, config["models"][proposed], config,
-        X_train, y_train, X_test, y_test, drop, log=_log,
-    )
-
-    full = provenance_stage.full_feature_metrics(proposed, threshold)
-    record["full_feature_metrics"] = full
-
     path = PATHS.outputs / "provenance_analysis.json"
+    expected = [c for c in X_train.columns
+                if provenance_stage.provenance_map().get(c) not in drop]
+
+    # The refit costs as much as training the proposed model, so a completed one
+    # is reused when it was fitted on exactly this feature set. Set
+    # PROVENANCE_FORCE=1 to redo it.
+    cached = None
+    if path.exists() and not os.environ.get("PROVENANCE_FORCE"):
+        previous = json.loads(path.read_text())
+        if previous.get("retained_features") == expected:
+            cached = previous
+            _log(f"reusing the completed refit in {path.name} "
+                 f"({len(expected)} features); PROVENANCE_FORCE=1 to redo it")
+
+    if cached is not None:
+        record = cached
+    else:
+        _log(f"refitting {proposed} on non-{'/'.join(drop)} features only")
+        record = provenance_stage.ablate(
+            proposed, config["models"][proposed], config,
+            X_train, y_train, X_test, y_test, drop, log=_log,
+        )
+
+    record["full_feature_metrics"] = provenance_stage.full_feature_metrics(
+        proposed, threshold,
+    )
+    full = record["full_feature_metrics"]
+
+    # --- 3. and if the proxies are not the explanation, what is? -----------
+    #
+    # Dropping every label-conditioned feature did not reduce performance, which
+    # removes the simulation as the explanation for the near-perfect metrics and
+    # points at the dataset. This measures that directly.
+    separability = provenance_stage.dataset_separability(
+        PATHS.root / config["dataset"]["source_csv"],
+    )
+    record["dataset_separability"] = separability
+
+    rule = separability["rule_without_a_model"]
+    drain = separability["signatures"]["amount_equals_old_balance"]
+    _log(f"  PaySim: amount == oldbalanceOrg for "
+         f"{drain['share_of_fraud'] * 100:.2f}% of fraud and "
+         f"{drain['share_of_legitimate'] * 100:.4f}% of legitimate rows")
+    _log(f"  a single rule, no model: precision "
+         f"{rule['precision'] * 100:.2f}% · recall {rule['recall'] * 100:.2f}%")
+
     path.write_text(json.dumps(record, indent=2) + "\n")
 
     ablated = record["metrics"]

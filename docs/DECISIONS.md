@@ -436,3 +436,81 @@ from the same record.
 network, and do not reconcile the two by averaging them. They measure the same
 bytecode under different state-growth pricing, and the live figure is the one
 that answers "what does this cost to operate".
+
+---
+
+## D-015 · The near-perfect accuracy is PaySim's, not the model's
+
+**Status** Measured 28 October 2026
+**Affects** Section 3.12.4, Section 3.12.5, Section 3.19, Sections 4.3.1–4.3.5,
+Chapter Five
+
+The run reports accuracy 1.0000 and ROC AUC 1.0000 for four of six classifiers,
+**logistic regression among them**. A linear model does not separate a hard
+problem perfectly, so the figure needed an explanation before it could be
+reported. Three measurements, recorded in
+`ml/outputs/provenance_analysis.json`, produced one — by way of a wrong answer
+that is worth recording, because it is the answer a reader reaches for first.
+
+**The wrong answer.** Section 3.12.5 draws eight of the eighteen features from
+distributions conditioned on the fraud label. Measured alone on the held-out
+partition, `counterparty_reputation` reaches **0.9950** AUC and four more
+proxies exceed 0.91, against **0.8479** for the best genuinely observed feature.
+Those five also carry most of the fitted model's importance. The obvious
+inference is that the headline metric is circular.
+
+**What refutes it.** The proposed estimator was refitted on the observed and
+derived features only — same split, same hyperparameters from the completed
+search, same 0.75 threshold — so only the feature set varied.
+
+| | All 18 features | Observed and derived only (11) |
+| --- | --- | --- |
+| F1 (fraud) | 0.9951 | **0.9959** |
+| ROC AUC | 1.0000 | 0.9994 |
+| Precision | 1.0000 | 0.9943 |
+| Recall | 0.9903 | 0.9976 |
+
+Removing every label-conditioned feature made the model *marginally better*. The
+proxies are **redundant, not load-bearing**: a tree ensemble leans on whatever
+separates most cleanly, and without them it finds equivalent signal elsewhere.
+
+**The actual cause.** In the observed-only model `amount_to_account_ratio`
+carries 60.5% of the importance. That ratio is large exactly when a transaction
+empties the account it came from, which is how PaySim generates fraud.
+
+| Condition | Among fraud | Among legitimate |
+| --------- | ----------- | ---------------- |
+| `amount == oldbalanceOrg` | 97.82% | 0.0001% (7 of 6,354,407) |
+| `newbalanceOrig == 0` | 98.05% | 56.68% |
+| both together | 97.70% | 0.00% |
+
+A single boolean expression — the transaction drained the originating account
+exactly and left it empty — achieves **99.98% precision and 97.70% recall with
+no model, no features and no training**. The 0.995 F1 is a measurement of the
+simulator's determinism, not of modelling skill. It is also why five of six
+classifiers cluster within a few thousandths and why McNemar cannot separate the
+top three: there is almost nothing left to separate.
+
+**Report edits.**
+
+1. Sections 4.3.1–4.3.5 must not present these figures as fraud-detection
+   capability. They bound what is achievable *on this dataset*. The defensible
+   claim is that the pipeline reproduces PaySim's known separability, which
+   validates the implementation — partition, balancing, threshold, serving path
+   — without evidencing real-world accuracy.
+2. Section 3.19 gains a limitation with a measured basis: PaySim's fraud is a
+   near-deterministic account drain, so the metrics transfer to real escrow
+   fraud only insofar as real fraud shares that signature, which is unmeasured
+   and unlikely.
+3. Section 3.12.5 should state both properties of the simulated proxies — they
+   are label-conditioned, which is why they dominate the importance ranking
+   when present, and redundant, which is why removing them costs nothing.
+4. Section 3.12.4 should record that four derived features — `velocity_24h`,
+   `velocity_7d`, `velocity_30d`, `amount_deviation` — measure AUC 0.500 alone
+   and receive essentially zero importance in both models. They are computed but
+   inert, so listing all eighteen as contributing overstates the feature set.
+
+**Caution for the viva.** Do not defend the 1.0000 AUC as a result. Present it as
+something found, chased down and bounded. An examiner who spots it unprompted
+will doubt the whole chapter; the same examiner, shown the ablation and the
+one-line rule, has reason to trust it.
