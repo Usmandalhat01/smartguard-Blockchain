@@ -69,17 +69,56 @@
 
 .heroInner {
   position: relative;
-  max-width: var(--shell-max);
+  max-width: 760px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 52px;
-  align-items: center;
+  text-align: center;
 }
 
 @media (max-width: 980px) {
-  .heroInner { grid-template-columns: minmax(0, 1fr); gap: 36px; }
   .hero { padding: 48px 20px 44px; }
+}
+
+/* The product banner. Sits directly under the headline, which is where a
+   reader looks next, and is framed so stock photography reads as a product
+   surface rather than as decoration. */
+.heroShot {
+  position: relative;
+  max-width: 1140px;
+  margin: 44px auto 0;
+}
+
+.heroShot::after {
+  /* A soft brand glow under the frame, so it lifts off the grid background. */
+  content: '';
+  position: absolute;
+  inset: auto 8% -22px;
+  height: 46px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center,
+    color-mix(in srgb, var(--brand) 26%, transparent), transparent 70%);
+  filter: blur(22px);
+  z-index: -1;
+}
+
+.shotFrame {
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  padding: 8px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.shotImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--r-xl) - 9px);
+}
+
+@media (max-width: 720px) {
+  .heroShot { margin-top: 30px; }
+  .shotFrame { padding: 5px; }
 }
 
 .eyebrow {
@@ -110,14 +149,17 @@
   color: transparent;
 }
 
-.lede { margin-top: 18px; font-size: 1.0625rem; line-height: 1.62; color: var(--text-2); max-width: 56ch; }
+.lede { margin-top: 18px; font-size: 1.0625rem; line-height: 1.62; color: var(--text-2); max-width: 60ch; margin-inline: auto; }
 
-.heroCtas { margin-top: 28px; display: flex; gap: 11px; flex-wrap: wrap; }
+.heroCtas { margin-top: 28px; display: flex; gap: 11px; flex-wrap: wrap; justify-content: center; }
 
 .heroMeta {
-  margin-top: 30px;
-  padding-top: 22px;
+  position: relative;
+  max-width: 1140px;
+  margin: 44px auto 0;
+  padding-top: 24px;
   border-top: 1px solid var(--line);
+  text-align: center;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 20px;
@@ -135,6 +177,17 @@
 .metaLabel { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; line-height: 1.4; }
 
 /* --------------------------------------------------------- hero diagram -- */
+
+.archGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .archGrid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+}
 
 .diagram {
   background: var(--surface);
@@ -277,20 +330,106 @@
 
 /* -------------------------------------------------------------- honesty -- */
 
-.scopeGrid { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 760px) { .scopeGrid { grid-template-columns: 1fr; } }
+/* --------------------------------------------------------- capabilities -- */
 
-.scopeCol { padding: 20px; border-radius: var(--r-lg); border: 1px solid var(--line); }
-.scopeDoes { background: var(--safe-soft); border-color: var(--safe-line); }
-.scopeNot  { background: var(--blocked-soft); border-color: var(--blocked-line); }
+.capGrid {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
 
-.scopeHead { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 700; margin-bottom: 13px; }
-.scopeDoes .scopeHead { color: var(--safe); }
-.scopeNot  .scopeHead { color: var(--blocked); }
+@media (max-width: 900px) {
+  .capGrid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}
 
-.scopeList { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.scopeItem { display: flex; gap: 9px; font-size: 0.8438rem; line-height: 1.55; color: var(--text-2); }
-.scopeBullet { flex: none; margin-top: 3px; }
+.capCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.capCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--line-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capCard, .capCard:hover { transform: none; transition: none; }
+}
+
+.capMedia {
+  position: relative;
+  aspect-ratio: 6 / 5;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.capImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.capBody { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+
+.capEyebrow {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--brand-line);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.capTitle {
+  margin-top: 11px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.capText { margin-top: 9px; font-size: 0.875rem; line-height: 1.62; color: var(--text-dim); }
+
+.capList {
+  /* Pushed to the bottom so the tick lists line up across the row even when the
+     paragraphs above them run to different lengths. */
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.capItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.capTick {
+  flex: none;
+  margin-top: 2px;
+  color: var(--safe);
+}
 
 /* --------------------------------------------------------------- footer -- */
 

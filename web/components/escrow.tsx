@@ -61,7 +61,7 @@ export function TransactionTable({
             <th>Risk score</th>
             <th>State</th>
             <th>Updated</th>
-            {actions && <th className={ui.tdRight}>Action</th>}
+            {actions && <th className={`${ui.tdRight} ${ui.tdSticky}`}>Action</th>}
           </tr>
         </thead>
         <tbody>
@@ -92,7 +92,7 @@ export function TransactionTable({
                 <td style={{ fontSize: '0.8125rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
                   {relativeTime(updated)}
                 </td>
-                {actions && <td className={ui.tdRight}>{actions(tx)}</td>}
+                {actions && <td className={`${ui.tdRight} ${ui.tdSticky}`}>{actions(tx)}</td>}
               </tr>
             );
           })}

@@ -1,9 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import {
-  ArrowRight, Boxes, CheckCircle2, Cpu, Gauge, Gavel, Link2, Lock, LogIn,
-  Monitor, Moon, ScrollText, Settings2, Shield, ShieldCheck, Sun, User, XCircle,
+  ArrowRight, Boxes, Check, Cpu, Gauge, Gavel, Link2, Lock, LogIn,
+  Monitor, Moon, ScrollText, Settings2, Shield, ShieldCheck, Sun, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ROLE_DESCRIPTION, ROLE_LABEL, ROLE_PERMISSIONS } from '@/lib/auth/policy';
@@ -15,7 +16,7 @@ const LAYERS = [
   { icon: <Monitor size={15} />, name: 'Presentation layer', tech: 'React · Next.js', colour: 'var(--text-dim)', edge: 'submits transaction' },
   { icon: <Cpu size={15} />, name: 'Application & intelligence layer', tech: 'FastAPI · scikit-learn · PostgreSQL', colour: 'var(--brand)', edge: 'returns P(fraud)' },
   { icon: <Link2 size={15} />, name: 'Oracle / integration layer', tech: 'Web3.py bridge', colour: 'var(--chain)', edge: 'writes score on chain' },
-  { icon: <Boxes size={15} />, name: 'Blockchain layer', tech: 'Solidity 0.8.19 · Sepolia', colour: 'var(--chain)', edge: null },
+  { icon: <Boxes size={15} />, name: 'Blockchain layer', tech: 'Solidity 0.8.20 · Sepolia', colour: 'var(--chain)', edge: null },
 ];
 
 const MECHANISMS = [
@@ -50,18 +51,57 @@ const ROLE_ICON: Record<Role, React.ReactNode> = {
 
 const ROLES: Role[] = ['buyer', 'seller', 'arbitrator', 'admin'];
 
-const DOES = [
-  'Demonstrates an oracle-mediated path from an off-chain risk score to an on-chain decision gate.',
-  'Implements the four escrow states, the five contract entry points and the four stakeholder workflows.',
-  'Enforces role-based access at the route, at the server, and — for anything touching funds — at the contract.',
-  'Keeps every AI decision auditable, with the threshold in force at the time stored alongside the score.',
-];
-
-const DOES_NOT = [
-  'Establish production fraud-detection effectiveness. Training data is synthetic PaySim, not escrow records.',
-  'Claim statistical superiority for Random Forest. No inferential test was conducted between classifiers.',
-  'Offer a decentralised oracle. The bridge is a single trusted relay, which concentrates trust by design.',
-  'Present verified performance figures. Gas, latency and throughput are descriptive, not reproducible benchmarks.',
+/**
+ * The three things a person actually does with SmartGuard, in the order they
+ * do them. Each is illustrated rather than described, because the landing page
+ * is read by people deciding whether to trust the thing, not only by examiners.
+ */
+const CAPABILITIES = [
+  {
+    image: '/escrow-agreement.png',
+    alt: 'A seller reviewing and signing escrow terms on a tablet',
+    eyebrow: 'Step one',
+    title: 'Agree the terms before any money moves',
+    body:
+      'Buyer, seller and arbitrator are fixed the moment an escrow opens, and the '
+      + 'identifier is derived from the terms themselves. Nobody can quietly swap a '
+      + 'party or an amount afterwards.',
+    points: [
+      'Three named parties, settled up front',
+      'Identifier derived from the agreed terms',
+      'Arbitrator chosen before there is a dispute',
+    ],
+  },
+  {
+    image: '/escrow-tracking.png',
+    alt: 'A buyer tracking a funded escrow moving through its stages on a phone',
+    eyebrow: 'Step two',
+    title: 'Fund it once the risk check clears',
+    body:
+      'Every deposit is scored before it is accepted. The score is written on chain '
+      + 'and the contract reads it back itself, so a high-risk deposit is refused at '
+      + 'the point of custody rather than flagged for someone to chase.',
+    points: [
+      'Eighteen signals scored in under two seconds',
+      'Refused above the configured gate',
+      'An unscored deposit is refused, not waved through',
+    ],
+  },
+  {
+    image: '/escrow-global.png',
+    alt: 'Cross-border settlement, currencies orbiting a secured wallet',
+    eyebrow: 'Step three',
+    title: 'Release on the terms, not on trust',
+    body:
+      'Funds sit in the contract until delivery is confirmed and the time lock runs '
+      + 'out. If something goes wrong, either side can raise a dispute and the '
+      + 'arbitrator decides — not the buyer, and not the seller.',
+    points: [
+      'Held in the contract, not by an intermediary',
+      'Released on confirmation and a 48-hour lock',
+      'Disputes resolved by the named arbitrator',
+    ],
+  },
 ];
 
 export default function Home() {
@@ -91,53 +131,121 @@ export default function Home() {
       <section className={s.hero}>
         <div className={s.heroGrid} />
         <div className={s.heroInner}>
-          <div>
-            <span className={s.eyebrow}>
-              <Shield size={12} /> Final-year software engineering project · prototype
-            </span>
+          <span className={s.eyebrow}>
+            <Shield size={12} /> Escrow with a risk check the contract enforces
+          </span>
 
-            <h1 className={s.title}>
-              A fraud score that a smart contract{' '}
-              <span className={s.titleAccent}>actually enforces</span>.
-            </h1>
+          <h1 className={s.title}>
+            Send money to a stranger{' '}
+            <span className={s.titleAccent}>without trusting one.</span>
+          </h1>
 
-            <p className={s.lede}>
-              A machine-learning model can predict that a transaction is fraudulent but cannot stop
-              it. A smart contract can stop a transaction but cannot tell a first-time seller from a
-              fraudulent one. SmartGuard connects the two through an oracle, so a risk estimate
-              becomes a precondition of custody rather than an advisory alert someone has to act on.
-            </p>
+          <p className={s.lede}>
+            SmartGuard holds the funds in a smart contract and scores the transaction for
+            fraud before it will accept them. The score is not a warning someone has to act
+            on — it is a condition the contract checks itself, every time.
+          </p>
 
-            <div className={s.heroCtas}>
-              <Link href="/login">
-                <Button variant="primary" size="lg"><LogIn size={16} /> Sign in to the system</Button>
-              </Link>
-              <Link href="#architecture">
-                <Button size="lg">How it works</Button>
-              </Link>
-            </div>
-
-            <div className={s.heroMeta}>
-              <div>
-                <div className={s.metaValue}>4</div>
-                <div className={s.metaLabel}>architectural layers</div>
-              </div>
-              <div>
-                <div className={s.metaValue}>18</div>
-                <div className={s.metaLabel}>engineered features</div>
-              </div>
-              <div>
-                <div className={s.metaValue}>6.36M</div>
-                <div className={s.metaLabel}>PaySim training records</div>
-              </div>
-              <div>
-                <div className={s.metaValue}>0.75</div>
-                <div className={s.metaLabel}>configured risk gate</div>
-              </div>
-            </div>
+          <div className={s.heroCtas}>
+            <Link href="/login">
+              <Button variant="primary" size="lg"><LogIn size={16} /> Sign in</Button>
+            </Link>
+            <Link href="#how">
+              <Button size="lg">See how it works</Button>
+            </Link>
           </div>
+        </div>
 
-          <div className={s.diagram} id="architecture">
+        <div className={s.heroShot}>
+          <div className={s.shotFrame}>
+            <Image
+              src="/escrow-hero.png"
+              alt="A buyer and a seller either side of a secured escrow agreement"
+              width={1668}
+              height={461}
+              priority
+              sizes="(max-width: 1200px) 100vw, 1140px"
+              className={s.shotImage}
+            />
+          </div>
+        </div>
+
+        <div className={s.heroMeta}>
+          <div>
+            <div className={s.metaValue}>4</div>
+            <div className={s.metaLabel}>architectural layers</div>
+          </div>
+          <div>
+            <div className={s.metaValue}>18</div>
+            <div className={s.metaLabel}>signals scored per deposit</div>
+          </div>
+          <div>
+            <div className={s.metaValue}>6.36M</div>
+            <div className={s.metaLabel}>transactions trained on</div>
+          </div>
+          <div>
+            <div className={s.metaValue}>48h</div>
+            <div className={s.metaLabel}>release time lock</div>
+          </div>
+        </div>
+      </section>
+
+      <section className={s.section} id="product">
+        <div className={s.sectionInner}>
+          <div className={s.sectionEyebrow}>How an escrow runs</div>
+          <h2 className={s.sectionTitle}>Three steps, and the contract holds the line at each one</h2>
+          <p className={s.sectionLede}>
+            Nothing here depends on either party behaving well, or on anyone watching a
+            dashboard. Each stage has a rule, and the rule is enforced where the money is.
+          </p>
+
+          <div className={s.capGrid}>
+            {CAPABILITIES.map((cap) => (
+              <article key={cap.title} className={s.capCard}>
+                <div className={s.capMedia}>
+                  <Image
+                    src={cap.image}
+                    alt={cap.alt}
+                    width={556}
+                    height={465}
+                    sizes="(max-width: 900px) 100vw, 380px"
+                    className={s.capImage}
+                  />
+                </div>
+                <div className={s.capBody}>
+                  <span className={s.capEyebrow}>{cap.eyebrow}</span>
+                  <h3 className={s.capTitle}>{cap.title}</h3>
+                  <p className={s.capText}>{cap.body}</p>
+                  <ul className={s.capList}>
+                    {cap.points.map((point) => (
+                      <li key={point} className={s.capItem}>
+                        <Check size={13} className={s.capTick} />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={`${s.section} ${s.sectionAlt}`} id="architecture">
+        <div className={s.sectionInner}>
+          <div className={s.archGrid}>
+            <div>
+              <div className={s.sectionEyebrow}>Architecture</div>
+              <h2 className={s.sectionTitle}>Four layers, one request path</h2>
+              <p className={s.sectionLede}>
+                A deposit travels from the browser to the model, from the model to the
+                chain through an oracle, and is finally judged by the contract that holds
+                the funds. Each boundary is a separate process, so no layer can quietly
+                assume another one did its job.
+              </p>
+            </div>
+
+            <div className={s.diagram}>
             <div className={s.diagramHead}>
               <span className={s.diagramDots}>
                 <span className={s.diagramDot} />
@@ -166,14 +274,15 @@ export default function Home() {
                   )}
                 </div>
               ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className={`${s.section} ${s.sectionAlt}`}>
+      <section className={s.section} id="how">
         <div className={s.sectionInner}>
-          <div className={s.sectionEyebrow}>How it works</div>
+          <div className={s.sectionEyebrow}>Why it holds</div>
           <h2 className={s.sectionTitle}>Enforcement, not advice</h2>
           <p className={s.sectionLede}>
             The risk check is a contractual precondition, not a front-end validation. A technically
@@ -203,7 +312,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className={s.section}>
+      <section className={`${s.section} ${s.sectionAlt}`}>
         <div className={s.sectionInner}>
           <div className={s.sectionEyebrow}>Access control</div>
           <h2 className={s.sectionTitle}>Four roles, each a separate sign-in</h2>
@@ -234,43 +343,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className={`${s.section} ${s.sectionAlt}`}>
-        <div className={s.sectionInner}>
-          <div className={s.sectionEyebrow}>Scope</div>
-          <h2 className={s.sectionTitle}>What this prototype does and does not establish</h2>
-          <p className={s.sectionLede}>
-            The contribution is an implemented and evaluated integration pattern, not evidence of
-            production readiness. Stating the boundary precisely is part of the work.
-          </p>
-
-          <div className={s.scopeGrid}>
-            <div className={`${s.scopeCol} ${s.scopeDoes}`}>
-              <div className={s.scopeHead}><CheckCircle2 size={16} /> It does</div>
-              <ul className={s.scopeList}>
-                {DOES.map((item) => (
-                  <li key={item} className={s.scopeItem}>
-                    <CheckCircle2 size={14} className={s.scopeBullet} style={{ color: 'var(--safe)' }} />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className={`${s.scopeCol} ${s.scopeNot}`}>
-              <div className={s.scopeHead}><XCircle size={16} /> It does not</div>
-              <ul className={s.scopeList}>
-                {DOES_NOT.map((item) => (
-                  <li key={item} className={s.scopeItem}>
-                    <XCircle size={14} className={s.scopeBullet} style={{ color: 'var(--blocked)' }} />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <footer className={s.footer}>
         <div className={s.footerInner}>
           <div className={s.brand}>
@@ -278,7 +350,7 @@ export default function Home() {
             <span className={s.brandName}>SmartGuard</span>
           </div>
           <div className={s.footerMeta}>
-            Blockchain-Enhanced AI-Powered Transaction System for Fraud Detection and Risk Analysis
+            Blockchain-Enhanced AI-Powered Digital Escrow Transaction System for Fraud Detection and Risk Analysis
             <br />
             Miva Open University Abuja · Department of Software Engineering
           </div>

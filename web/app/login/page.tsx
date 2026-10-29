@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { Shield } from 'lucide-react';
 import { DEMO_CREDENTIALS } from '@/lib/auth/accounts';
@@ -20,6 +21,25 @@ export default function LoginPage() {
 
   return (
     <div className={s.page}>
+      <aside className={s.artSide}>
+        <Image
+          src="/escrow-tracking.png"
+          alt="A funded escrow moving through its stages on a phone"
+          fill
+          sizes="(max-width: 940px) 0px, 46vw"
+          className={s.artImage}
+          priority
+        />
+        <div className={s.artScrim} />
+        <div className={s.artCopy}>
+          <h2 className={s.artTitle}>Funds move when the terms are met.</h2>
+          <p className={s.artText}>
+            Every deposit is scored for fraud before the contract will accept it, and
+            released only on confirmation and the agreed time lock.
+          </p>
+        </div>
+      </aside>
+
       <div className={s.formSide}>
         <div className={s.formInner}>
           <div className={s.brand}>
