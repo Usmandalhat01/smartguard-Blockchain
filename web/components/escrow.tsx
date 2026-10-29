@@ -72,7 +72,7 @@ export function TransactionTable({
               <tr key={tx.id}>
                 <td>
                   <Link
-                    href={`/dashboard/escrow/${tx.id}`}
+                    href={`/escrows/${tx.id}`}
                     className="mono"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 550 }}
                   >

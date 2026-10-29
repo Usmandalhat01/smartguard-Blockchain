@@ -1,0 +1,115 @@
+{
+  "recordedAt": "2026-10-29T00:50:23.130Z",
+  "webUrl": "http://localhost:3000",
+  "apiUrl": "http://localhost:8000",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 2
+  },
+  "browser": "chrome 156.0.8078.48",
+  "closes": "Appendix A and Table A1 — no interface evidence was retained for any tested scenario.",
+  "screenshots": [
+    {
+      "name": "01-login",
+      "file": "docs/evidence/screenshots/01-login.png",
+      "role": "unauthenticated",
+      "requestedRoute": "/login",
+      "landedRoute": "/login",
+      "evidences": "Section 3.15.2 — four roles are four separate sign-ins, not a role selector on one account.",
+      "bytes": 2074404
+    },
+    {
+      "name": "02-buyer-escrows",
+      "file": "docs/evidence/screenshots/02-buyer-escrows.png",
+      "role": "buyer",
+      "requestedRoute": "/escrows",
+      "landedRoute": "/escrows",
+      "evidences": "FR-02 — the buyer workspace lists only that buyer's escrows.",
+      "bytes": 462334
+    },
+    {
+      "name": "03-buyer-new-escrow",
+      "file": "docs/evidence/screenshots/03-buyer-new-escrow.png",
+      "role": "buyer",
+      "requestedRoute": "/escrows/new",
+      "landedRoute": "/escrows/new",
+      "evidences": "Section 3.12.4 and FR-01 — the escrow creation form, whose submission is scored by the FastAPI model before any funds move.",
+      "bytes": 608837
+    },
+    {
+      "name": "04-buyer-escrow-detail",
+      "file": "docs/evidence/screenshots/04-buyer-escrow-detail.png",
+      "role": "buyer",
+      "requestedRoute": "/escrows/ESC-1042",
+      "landedRoute": "/escrows/ESC-1042",
+      "evidences": "Section 3.14 and Section 4.3.5 — one escrow in full: the risk score that admitted it, the features that drove that score, and the state the contract currently holds it in.",
+      "bytes": 779605
+    },
+    {
+      "name": "05-rbac-refusal",
+      "file": "docs/evidence/screenshots/05-rbac-refusal.png",
+      "role": "buyer",
+      "requestedRoute": "/admin",
+      "landedRoute": "/forbidden",
+      "evidences": "Section 3.15.2 — the decisive shot. A buyer requesting /admin is refused server-side and redirected to /forbidden. The browser cannot assert a role it does not hold, because the session cookie is HttpOnly and signed with a server-held key.",
+      "bytes": 131856
+    },
+    {
+      "name": "06-seller-escrows",
+      "file": "docs/evidence/screenshots/06-seller-escrows.png",
+      "role": "seller",
+      "requestedRoute": "/escrows",
+      "landedRoute": "/escrows",
+      "evidences": "Section 3.15.2 — the same route renders a different workspace for a different role; permissions are not stacked in one view.",
+      "bytes": 295792
+    },
+    {
+      "name": "07-arbitrator-disputes",
+      "file": "docs/evidence/screenshots/07-arbitrator-disputes.png",
+      "role": "arbitrator",
+      "requestedRoute": "/disputes",
+      "landedRoute": "/disputes",
+      "evidences": "FR-05 and Section 3.11.1 — dispute resolution is reachable only by the arbitrator, matching resolveDispute's on-chain check against the escrow's recorded arbitrator.",
+      "bytes": 395206
+    },
+    {
+      "name": "08-admin-overview",
+      "file": "docs/evidence/screenshots/08-admin-overview.png",
+      "role": "admin",
+      "requestedRoute": "/admin",
+      "landedRoute": "/admin",
+      "evidences": "Section 3.16 — the operator workspace.",
+      "bytes": 1101159
+    },
+    {
+      "name": "09-admin-model",
+      "file": "docs/evidence/screenshots/09-admin-model.png",
+      "role": "admin",
+      "requestedRoute": "/admin/model",
+      "landedRoute": "/admin/model",
+      "evidences": "Section 3.14 — the deployed model version and the risk threshold the contract enforces.",
+      "bytes": 1407523
+    },
+    {
+      "name": "10-admin-settings",
+      "file": "docs/evidence/screenshots/10-admin-settings.png",
+      "role": "admin",
+      "requestedRoute": "/admin/settings",
+      "landedRoute": "/admin/settings",
+      "evidences": "Section 3.11.3 — the risk threshold is configuration, and the interface says so.",
+      "bytes": 618404
+    },
+    {
+      "name": "11-admin-audit",
+      "file": "docs/evidence/screenshots/11-admin-audit.png",
+      "role": "admin",
+      "requestedRoute": "/admin/audit",
+      "landedRoute": "/admin/audit",
+      "evidences": "Section 3.15.2 — the audit trail, which records the layer and the actor for every recorded event.",
+      "bytes": 1557401
+    }
+  ],
+  "consoleErrors": [],
+  "failures": []
+}

@@ -62,9 +62,14 @@ const SHOTS = [
       + 'submission is scored by the FastAPI model before any funds move.',
   },
   {
-    role: 'buyer', route: '/dashboard', name: '04-buyer-dashboard',
-    evidences: 'Section 3.7.1 — the presentation layer reads state from the '
-      + 'application layer rather than holding its own.',
+    // Not /dashboard: that route is a redirect to the role's home, so the shot
+    // came back byte-identical to the one above and evidenced nothing. The
+    // detail view is what carries the risk score and its contributions.
+    role: 'buyer', route: '/escrows/ESC-1042', name: '04-buyer-escrow-detail',
+    evidences: 'Section 3.14 and Section 4.3.5 — one escrow in full: the risk '
+      + 'score that admitted it, the features that drove that score, and the '
+      + 'state the contract currently holds it in.',
+    expectRoute: '/escrows/ESC-1042',
   },
   {
     role: 'buyer', route: '/admin', name: '05-rbac-refusal',
@@ -133,6 +138,17 @@ async function main() {
     });
   };
 
+  // `next dev` injects a floating dev-tools button that sits over the sidebar.
+  // It is part of the toolchain, not of the application, and it has no business
+  // appearing in evidence submitted with the report. Hidden at capture time so
+  // the application itself is not altered to suit the screenshots.
+  const HIDE_DEV_OVERLAY = `
+    nextjs-portal,
+    [data-nextjs-dev-tools-button],
+    [data-nextjs-toast],
+    #__next-build-watcher { display: none !important; }
+  `;
+
   try {
     let currentRole = 'none';
     let context = await browser.newContext({
@@ -140,6 +156,7 @@ async function main() {
     });
     let page = await context.newPage();
     watchConsole(page);
+    await page.addStyleTag({ content: HIDE_DEV_OVERLAY }).catch(() => {});
 
     for (const shot of SHOTS) {
       // A new context per role, so one role's cookie never leaks into another's
@@ -160,6 +177,8 @@ async function main() {
           { waitUntil: 'networkidle', timeout: 45000 });
         // Let any client-side data settle before the shutter.
         await page.waitForTimeout(1200);
+        // Re-applied per navigation: the dev overlay is re-injected each time.
+        await page.addStyleTag({ content: HIDE_DEV_OVERLAY }).catch(() => {});
 
         const landed = new URL(page.url()).pathname;
         if (shot.expectRoute && !landed.startsWith(shot.expectRoute)) {
