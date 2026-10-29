@@ -52,7 +52,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      {/*
+        Browser extensions write to <body> before React hydrates — Grammarly
+        adds data-new-gr-c-s-check-loaded and data-gr-ext-installed, password
+        managers add their own — and React reports the difference as a
+        hydration mismatch in a tree it did not render.
+
+        suppressHydrationWarning applies to this element only, not to its
+        descendants, so it silences the attributes an extension injects here
+        without hiding a genuine mismatch anywhere inside the application.
+      */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
