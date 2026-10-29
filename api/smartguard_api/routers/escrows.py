@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
@@ -95,9 +96,67 @@ def _serialise(tx: Transaction, user: User, config: dict) -> EscrowOut:
     return out
 
 
+# How many times to retry a reference collision before giving up. Each attempt
+# recomputes from the current row count, so a handful covers far more
+# concurrency than NFR-05's thirty cycles per minute.
+_REFERENCE_ATTEMPTS = 8
+
+
 def _next_reference(db: Session) -> str:
+    """The next human-readable escrow reference.
+
+    Derived from the row count, which is a read-modify-write and therefore
+    racy: two concurrent requests both see the same count, both build
+    `ESC-1042`, and the second violates the unique index. Under load testing
+    this appeared as a 500 on roughly four per cent of escrow creations. A
+    single-threaded test suite cannot reach it.
+
+    The count is kept rather than replaced with a sequence because the
+    reference is user-visible and sequential by design, and because a
+    PostgreSQL sequence would behave differently under SQLite, where the
+    suites run. `_insert_with_reference` makes the write safe instead, by
+    retrying on the collision this function cannot prevent.
+    """
     count = db.query(Transaction).count()
     return f"ESC-{1042 + count}"
+
+
+def _insert_with_reference(db: Session, build: Callable[[str], Transaction]) -> Transaction:
+    """Inserts a transaction, retrying if its reference was taken concurrently.
+
+    `build` is called with a candidate reference and returns the unfinished
+    row. It is called again on each attempt, because a rolled-back ORM object
+    cannot be reused.
+
+    Only an integrity error on the reference is retried. Any other failure is
+    re-raised, so a genuine fault is not retried eight times and then reported
+    as a collision.
+    """
+    for attempt in range(_REFERENCE_ATTEMPTS):
+        reference = _next_reference(db)
+        savepoint = db.begin_nested()
+        try:
+            tx = build(reference)
+            db.add(tx)
+            db.flush()
+        except IntegrityError as error:
+            savepoint.rollback()
+            if "reference" not in str(error.orig).lower():
+                raise
+            if attempt == _REFERENCE_ATTEMPTS - 1:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=(
+                        "Could not allocate an escrow reference under the "
+                        "current load. Please retry."
+                    ),
+                ) from error
+            continue
+        else:
+            savepoint.commit()
+            return tx
+
+    raise AssertionError("unreachable")
 
 
 # ------------------------------------------------------------- FR-01/02 ----
@@ -182,10 +241,9 @@ def create_escrow(
         )
 
     now = datetime.now(timezone.utc)
-    reference = _next_reference(db)
     nonce = secrets.randbits(48)
 
-    tx = Transaction(
+    tx = _insert_with_reference(db, lambda reference: Transaction(
         # Placeholder until the oracle bridge computes the keccak256 identifier
         # from the contract (Sprint 4). Recorded as such rather than left blank.
         escrow_id=f"pending:{nonce}",
@@ -199,9 +257,7 @@ def create_escrow(
         nonce=nonce,
         created_at=now,
         holding_period_ends_at=now + timedelta(hours=int(config["holdingPeriodHours"])),
-    )
-    db.add(tx)
-    db.flush()
+    ))
 
     db.add(FraudPrediction(
         transaction_id=tx.id,

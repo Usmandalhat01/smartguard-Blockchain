@@ -59,3 +59,7 @@ ml/data/raw/SAMPLE_paysim.csv
 # repository that regenerates them but does not carry them would leave that
 # gap open for anyone who cannot run a 70-minute pipeline.
 !ml/outputs/
+
+# Locust per-run CSVs. Intermediate: load-test.json carries the parsed
+# statistics, and that is what the report cites.
+docs/evidence/load-test-raw/

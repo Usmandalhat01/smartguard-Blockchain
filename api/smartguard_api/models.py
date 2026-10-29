@@ -24,7 +24,8 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, DateTime, Enum, Float, ForeignKey, Integer, JSON, String, Text,
+    BigInteger, Boolean, DateTime, Enum, Float, ForeignKey, Integer, JSON,
+    String, Text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -135,7 +136,20 @@ class Transaction(Base):
     outcome: Mapped[Outcome | None] = mapped_column(Enum(Outcome), nullable=True)
 
     # Deposit nonce, part of the escrow id derivation.
-    nonce: Mapped[int] = mapped_column(Integer)
+    #
+    # BigInteger, not Integer. The nonce is `secrets.randbits(48)`, so it
+    # exceeds a 32-bit column for all but about one value in 131,072 — which
+    # made escrow creation fail on PostgreSQL with `integer out of range`
+    # while passing every test, because the suites run on SQLite and SQLite
+    # stores integers at whatever width the value needs.
+    #
+    # 48 bits keeps the value below JavaScript's 2^53 safe-integer limit so the
+    # browser can carry it without loss; 64 bits of column holds it with room
+    # to spare. The on-chain parameter is a uint256, so the contract is not the
+    # constraint here. See test_models.py::test_nonce_column_is_64_bit, which
+    # asserts the type rather than the behaviour, because SQLite cannot
+    # reproduce the overflow.
+    nonce: Mapped[int] = mapped_column(BigInteger)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     delivery_confirmed_at: Mapped[datetime | None] = mapped_column(

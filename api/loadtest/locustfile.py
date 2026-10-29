@@ -48,6 +48,10 @@ SELLER_ID = os.environ.get("LOAD_SELLER_ID", "tunde.okafor@example.ng")
 # Seeded so the request mix is reproducible across repetitions.
 SEED = int(os.environ.get("LOAD_SEED", "20260909"))
 
+# API_PREFIX in smartguard_api/main.py. The names reported in the statistics
+# keep the prefix off, so the CSV columns stay readable.
+PREFIX = "/api/v1"
+
 
 @events.init_command_line_parser.add_listener
 def _(parser) -> None:
@@ -71,21 +75,33 @@ class EscrowUser(HttpUser):
         self.authenticated = False
 
         with self.client.post(
-            "/auth/login",
+            f"{PREFIX}/auth/login",
             json={"email": BUYER_EMAIL, "password": BUYER_PASSWORD},
             name="POST /auth/login",
             catch_response=True,
         ) as response:
-            if response.status_code == 200:
-                self.authenticated = True
-                response.success()
-            else:
-                # Without a session every later request is a 401, which would
-                # look like a capacity failure rather than a setup failure.
+            if response.status_code != 200:
+                # Without a token every later request is a 401, which would look
+                # like a capacity failure rather than a setup failure.
                 response.failure(
                     f"login failed with {response.status_code}; is the database "
                     f"seeded? run python -m smartguard_api.seed",
                 )
+                return
+
+            # The API authenticates with a bearer token, not a session cookie —
+            # the HttpOnly cookie belongs to the Next.js layer in front of it.
+            # Sending no header here returns 401 on every scored request, and
+            # the run would report a 100 per cent failure rate that has nothing
+            # to do with load.
+            token = (response.json() or {}).get("accessToken")
+            if not token:
+                response.failure("login returned no accessToken")
+                return
+
+            self.client.headers["Authorization"] = f"Bearer {token}"
+            self.authenticated = True
+            response.success()
 
     def scoring_payload(self) -> dict:
         """A plausible request, inside the bounds ScoringInput enforces."""
@@ -112,7 +128,7 @@ class EscrowUser(HttpUser):
         if not self.authenticated:
             return
         self.client.post(
-            "/risk/score",
+            f"{PREFIX}/risk/score",
             json=self.scoring_payload(),
             name="POST /risk/score",
         )
@@ -124,7 +140,7 @@ class EscrowUser(HttpUser):
             return
         scoring = self.scoring_payload()
         with self.client.post(
-            "/escrows",
+            f"{PREFIX}/escrows",
             json={
                 "sellerId": SELLER_ID,
                 "amountEth": scoring["amountEth"],
