@@ -9,14 +9,14 @@ import { ResolveDialog } from '@/components/resolve-dialog';
 import { useSession } from '@/lib/auth/context';
 import { canResolveDispute } from '@/lib/auth/policy';
 import { useStore } from '@/lib/store';
-import { SELLER_PROFILES, USER_BY_ID } from '@/lib/seed';
+import { sellerProfileOf } from '@/lib/seed';
 import { absoluteTime, eth, pct, relativeTime } from '@/lib/format';
 import type { Dispute, Transaction } from '@/lib/types';
 import q from './queue.module.css';
 
 export function DisputeQueue() {
   const { principal, can } = useSession();
-  const { disputes, transactions, settings } = useStore();
+  const { disputes, transactions, settings, userById } = useStore();
   const [active, setActive] = useState<{ tx: Transaction; dispute: Dispute } | null>(null);
 
   const open = disputes.filter((d) => !d.resolvedAt);
@@ -75,9 +75,9 @@ export function DisputeQueue() {
               const tx = transactions.find((t) => t.id === dispute.transactionId);
               if (!tx) return null;
 
-              const buyer = USER_BY_ID[tx.buyerId];
-              const seller = USER_BY_ID[tx.sellerId];
-              const sellerProfile = SELLER_PROFILES[tx.sellerId];
+              const buyer = userById(tx.buyerId);
+              const seller = userById(tx.sellerId);
+              const sellerProfile = sellerProfileOf(seller);
               const mayResolveThis = canResolveDispute(principal, tx, dispute);
 
               return (

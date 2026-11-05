@@ -514,3 +514,53 @@ top three: there is almost nothing left to separate.
 something found, chased down and bounded. An examiner who spots it unprompted
 will doubt the whole chapter; the same examiner, shown the ablation and the
 one-line rule, has reason to trust it.
+
+
+---
+
+## D-016 — Oracle bridge, event sync and live interface
+
+**Status:** built and rehearsed locally. Not yet run on Sepolia.
+
+**What was decided.**
+
+1. **Who signs what.** `EscrowContract` checks `msg.sender`, so deposits,
+   deliveries, releases, disputes and refunds can only be sent by the buyer,
+   seller or arbitrator. The service therefore never signs them. It signs one
+   thing: `RiskOracleContract.updateRiskScore`, with the operator key. A browser
+   wallet signs the rest (`web/lib/wallet.ts`). The alternative, custodial keys
+   held by the service, would put every user's funds behind one server secret.
+2. **Fail closed at the bridge.** `POST /escrows` writes the score on chain
+   before the escrow is recorded. If the write cannot be confirmed the request
+   returns 503 and nothing is stored; no deposit instruction is issued.
+3. **The database follows the chain.** With the bridge enabled the state-changing
+   routes (`confirm-delivery`, `withdraw`, `dispute`, `resolve`, `refund`) return
+   409, and `chain_sync` updates the record from contract events. This removes the
+   case where the database says DELIVERED and the contract says INITIATED.
+4. **Score rounding.** The contract's integer score is the probability rounded
+   *up*, so any probability the API gate accepts maps to an integer at or below
+   the contract threshold.
+5. **Exact amounts.** The escrow identifier includes the amount in wei. It is
+   derived from the decimal string, never float arithmetic, and the browser sends
+   the service's `amountWei` verbatim. A one-wei difference gives a different
+   identifier, no score, and a revert with `NoRiskAssessment` (tested).
+6. **Two thresholds, reported not synced.** The API gate comes from the database
+   setting; the contract's from `setRiskThreshold`, which is owner-only. The
+   operator key cannot call it. `GET /chain/status` reports `thresholdInSync` so a
+   mismatch is visible. The deployed contract holds 75; the report adopts 45.
+7. **Interface timings come from the contract** in on-chain mode, not from the
+   database settings, because the contract's values are the ones that bind.
+8. **Wallet linking.** Seeded wallet addresses belong to nobody. `PUT /auth/wallet`
+   binds an account to an address after an EIP-191 signature proves control.
+
+**Known gaps.**
+
+- Event sync reads logs by polling. A reorg deeper than `CHAIN_CONFIRMATIONS`
+  (default 2) would need a manual cursor reset.
+- Seller history fed to the model (`counterpartyReputation`, dispute rates) is
+  still client-supplied, matched to seeded profiles by name. There is no history
+  source yet.
+- The trained model is not in the repository, so scoring has been exercised only
+  with a stub. `api/scripts/rehearsal/` documents this.
+- `api/scripts/e2e_sepolia.py` is written and has been run against the local
+  stack only.

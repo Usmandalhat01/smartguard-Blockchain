@@ -1,0 +1,382 @@
+[
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "operator",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "nonpayable",
+  "type": "constructor"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint64",
+    "name": "expiry",
+    "type": "uint64"
+   },
+   {
+    "internalType": "uint256",
+    "name": "blockTime",
+    "type": "uint256"
+   }
+  ],
+  "name": "AssessmentExpired",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "NoScoreRecorded",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint256",
+    "name": "supplied",
+    "type": "uint256"
+   },
+   {
+    "internalType": "uint256",
+    "name": "last",
+    "type": "uint256"
+   }
+  ],
+  "name": "NonceNotIncreasing",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "caller",
+    "type": "address"
+   }
+  ],
+  "name": "NotOracleOperator",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "owner",
+    "type": "address"
+   }
+  ],
+  "name": "OwnableInvalidOwner",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+   }
+  ],
+  "name": "OwnableUnauthorizedAccount",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "ScoreAlreadyRecorded",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint8",
+    "name": "score",
+    "type": "uint8"
+   }
+  ],
+  "name": "ScoreOutOfRange",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "ZeroAddress",
+  "type": "error"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "previous",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "next",
+    "type": "address"
+   }
+  ],
+  "name": "OracleOperatorChanged",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "previousOwner",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "newOwner",
+    "type": "address"
+   }
+  ],
+  "name": "OwnershipTransferred",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "score",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "bytes32",
+    "name": "modelVersion",
+    "type": "bytes32"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "operator",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "RiskScoreRecorded",
+  "type": "event"
+ },
+ {
+  "inputs": [],
+  "name": "MAX_SCORE",
+  "outputs": [
+   {
+    "internalType": "uint8",
+    "name": "",
+    "type": "uint8"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "getAssessment",
+  "outputs": [
+   {
+    "internalType": "uint8",
+    "name": "score",
+    "type": "uint8"
+   },
+   {
+    "internalType": "bytes32",
+    "name": "modelVersion",
+    "type": "bytes32"
+   },
+   {
+    "internalType": "uint64",
+    "name": "recordedAt",
+    "type": "uint64"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "getRiskScore",
+  "outputs": [
+   {
+    "internalType": "uint8",
+    "name": "",
+    "type": "uint8"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "hasScore",
+  "outputs": [
+   {
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "lastNonce",
+  "outputs": [
+   {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "oracleOperator",
+  "outputs": [
+   {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "owner",
+  "outputs": [
+   {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "renounceOwnership",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "next",
+    "type": "address"
+   }
+  ],
+  "name": "setOracleOperator",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "newOwner",
+    "type": "address"
+   }
+  ],
+  "name": "transferOwnership",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "internalType": "uint8",
+    "name": "score",
+    "type": "uint8"
+   },
+   {
+    "internalType": "bytes32",
+    "name": "modelVersion",
+    "type": "bytes32"
+   },
+   {
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+   },
+   {
+    "internalType": "uint64",
+    "name": "expiry",
+    "type": "uint64"
+   }
+  ],
+  "name": "updateRiskScore",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ }
+]

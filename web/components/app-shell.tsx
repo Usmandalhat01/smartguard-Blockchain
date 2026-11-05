@@ -1,5 +1,6 @@
 'use client';
 
+import { WalletLink } from './wallet-link';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -126,6 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className={s.sidebarFoot}>
+          <WalletLink className={s.signOut} />
           <Link href="/" className={s.navItem}>
             <span className={s.navIcon}><Shield size={16} /></span>
             About this system

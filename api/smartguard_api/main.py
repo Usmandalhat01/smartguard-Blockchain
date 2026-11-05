@@ -7,6 +7,7 @@ forest per request would not fit inside NFR-01's two-second budget.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -16,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .inference import RiskScorer
-from .routers import admin, auth, escrows, health, risk
+from .routers import admin, auth, chain as chain_router, escrows, health, risk
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,7 +48,37 @@ async def lifespan(app: FastAPI):
             "starting without a risk model; escrow initiation will fail closed",
         )
 
+    app.state.chain = None
+    sync_task = None
+    if settings.chain_enabled:
+        from .chain import ChainClient
+        from .chain_sync import sync_once
+        from .db import SessionLocal
+
+        app.state.chain = ChainClient.from_settings(settings)
+        logger.info("blockchain bridge enabled (operator %s)", app.state.chain.operator.address)
+
+        def _pass() -> None:
+            with SessionLocal() as db:
+                sync_once(db, app.state.chain, start_block=settings.chain_start_block,
+                          confirmations=settings.chain_confirmations)
+
+        async def _loop() -> None:
+            while True:
+                try:
+                    await asyncio.to_thread(_pass)
+                except Exception:  # noqa: BLE001 - keep polling through RPC outages
+                    logger.exception("chain sync pass failed")
+                await asyncio.sleep(settings.chain_poll_seconds)
+
+        sync_task = asyncio.create_task(_loop())
+    else:
+        logger.info("blockchain bridge disabled; escrow state is held in the database only")
+
     yield
+
+    if sync_task is not None:
+        sync_task.cancel()
 
 
 app = FastAPI(
@@ -86,7 +117,7 @@ async def record_latency(request: Request, call_next):
     return response
 
 
-for router in (health.router, auth.router, risk.router, escrows.router, admin.router):
+for router in (health.router, auth.router, risk.router, escrows.router, admin.router, chain_router.router):
     app.include_router(router, prefix=API_PREFIX)
 
 

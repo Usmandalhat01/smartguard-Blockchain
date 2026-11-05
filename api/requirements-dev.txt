@@ -11,6 +11,10 @@
 pytest==7.4.4
 httpx==0.26.0
 
+# In-process EVM for tests/test_chain_integration.py, which deploys the real
+# compiled contracts and drives the bridge and event sync against them.
+web3[tester]==6.11.3
+
 # The NFR-01 and NFR-05 load test, api/loadtest/. This one DOES need
 # PostgreSQL: SQLite serialises writes, so a throughput figure measured on it
 # would say nothing about the deployed stack.

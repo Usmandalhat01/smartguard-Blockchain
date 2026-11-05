@@ -22,17 +22,24 @@ import type { Transaction } from '@/lib/types';
  */
 export function EscrowActions({ tx }: { tx: Transaction }) {
   const { principal } = useSession();
-  const { settings, confirmDelivery, claimRefund, releaseAfterTimeLock } = useStore();
+  const { settings, confirmDelivery, claimRefund, releaseAfterTimeLock, backendConnected } = useStore();
   const now = useNow();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [disputeOpen, setDisputeOpen] = useState(false);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
-    // Stands in for the round trip to the oracle bridge and block confirmation.
-    await new Promise((r) => setTimeout(r, 700));
-    await fn();
-    setBusy(false);
+    setError(null);
+    try {
+      if (!backendConnected) await new Promise((r) => setTimeout(r, 700)); // demo-mode latency
+      await fn();
+    } catch (e) {
+      // A rejected wallet prompt or a reverted transaction lands here.
+      setError(e instanceof Error ? e.message.split('\n')[0].slice(0, 160) : 'The action failed.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const mayConfirm = canConfirmDelivery(principal, tx);
@@ -99,6 +106,7 @@ export function EscrowActions({ tx }: { tx: Transaction }) {
   return (
     <>
       <span style={{ display: 'inline-flex', gap: 6 }}>{controls}</span>
+      {error && <span role="alert" style={{ color: 'var(--blocked)', fontSize: '0.75rem', marginLeft: 8 }}>{error}</span>}
       {disputeOpen && disputeRole && (
         <DisputeDialog tx={tx} role={disputeRole} onClose={() => setDisputeOpen(false)} />
       )}

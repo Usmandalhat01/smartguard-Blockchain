@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertOctagon, ArrowRight, CheckCircle2, Fingerprint, Gauge, Lock, Package,
@@ -12,7 +12,9 @@ import {
 import { ContributionBars, LayerTrace, RiskDial, type LayerStep } from '@/components/domain';
 import { useSession } from '@/lib/auth/context';
 import { requestRiskScore, useStore } from '@/lib/store';
-import { SELLER_PROFILES, USER_BY_ID } from '@/lib/seed';
+import { sellerProfileOf } from '@/lib/seed';
+import { balanceEth, connect as connectWallet } from '@/lib/wallet';
+import type { User } from '@/lib/types';
 import type { ScoringInput } from '@/lib/engine';
 import { eth, pct } from '@/lib/format';
 import type { FeatureContribution } from '@/lib/types';
@@ -27,12 +29,17 @@ interface Assessment {
   source: 'model' | 'simulated';
 }
 
-const SELLERS = ['u-seller', 'u-seller3', 'u-seller2'];
+const profileOf = sellerProfileOf;
 
 export function NewEscrowForm() {
   const router = useRouter();
   const { principal } = useSession();
-  const { settings, createEscrow, contracts, backendConnected } = useStore();
+  const {
+    settings, createEscrow, createLiveEscrow, depositFromWallet, listSellers, contracts,
+    backendConnected, onChain,
+  } = useStore();
+
+  const [balance, setBalance] = useState<number | undefined>(undefined);
 
   const [sellerId, setSellerId] = useState('u-seller');
   const [amount, setAmount] = useState('1.5');
@@ -52,9 +59,16 @@ export function NewEscrowForm() {
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [sellers, setSellers] = useState<User[]>([]);
+  useEffect(() => { void listSellers().then((rows) => {
+    setSellers(rows);
+    setSellerId((current) => (rows.some((r) => r.id === current) ? current : rows[0]?.id ?? current));
+  }).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not load sellers.')); }, [listSellers]);
   const amountEth = Number.parseFloat(amount) || 0;
-  const seller = USER_BY_ID[sellerId];
-  const profile = SELLER_PROFILES[sellerId];
+  const seller: User = useMemo(() => sellers.find((u) => u.id === sellerId)
+    ?? { id: sellerId, walletAddress: '0x0000000000000000000000000000000000000000', role: 'seller' as const, displayName: '…', createdAt: '' },
+  [sellers, sellerId]);
+  const profile = profileOf(seller);
 
   /** Any input change invalidates the score — a stale assessment must never
    *  be the one that admits a different transaction. */
@@ -74,7 +88,9 @@ export function NewEscrowForm() {
     offHours,
     meanAmount30d: 1.6,
     channel,
-  }), [amountEth, seller, principal, velocity, profile, deviceConsistent, highRiskGeo, offHours, channel]);
+    sellerId: backendConnected ? sellerId : undefined,
+    accountBalanceEth: balance,
+  }), [amountEth, seller, principal, velocity, profile, deviceConsistent, highRiskGeo, offHours, channel, backendConnected, sellerId, balance]);
 
   const blocked = assessment ? assessment.riskScore > settings.riskThreshold : false;
   const valid = amountEth > 0 && item.trim().length >= 6;
@@ -85,11 +101,26 @@ export function NewEscrowForm() {
     setPhase('scoring');
     setAssessment(null);
     try {
-      const result = await requestRiskScore(scoringInput);
+      let input = scoringInput;
+      if (onChain) {
+        // The model trains on amount / (balance + 1), so the real balance is required.
+        const account = await connectWallet(contracts.chainId);
+        if (account.toLowerCase() !== principal.walletAddress.toLowerCase()) {
+          throw new Error(`Your wallet (${account.slice(0, 8)}…) is not the one linked to this account. Link it first.`);
+        }
+        const wei = await balanceEth(account);
+        setBalance(wei);
+        input = { ...scoringInput, accountBalanceEth: wei };
+      }
+      const result = await requestRiskScore(input);
       setAssessment(result);
       setPhase('scored');
-    } catch {
+    } catch (e) {
       setPhase('idle');
+      if (onChain && e instanceof Error && !/risk-scoring|Request failed|service/.test(e.message)) {
+        setError(e.message);
+        return;
+      }
       setError(
         settings.failClosedOnInferenceError
           ? 'The risk-scoring service did not respond. The system is configured to fail closed, so this escrow cannot be initiated until scoring succeeds.'
@@ -102,6 +133,24 @@ export function NewEscrowForm() {
   async function deposit() {
     if (!assessment || blocked) return;
     setPhase('depositing');
+    setError(null);
+    if (backendConnected) {
+      try {
+        // The service re-scores, writes the score on chain, and returns the exact
+        // deposit parameters; the buyer's wallet then sends the deposit itself.
+        const { transaction, params } = await createLiveEscrow({
+          sellerId, amountEth, itemDescription: item.trim(),
+          scoring: { ...scoringInput, sellerAddress: undefined, buyerAddress: undefined },
+        });
+        if (params) await depositFromWallet(transaction.id, params);
+        setCreatedId(transaction.id);
+        setPhase('done');
+      } catch (e) {
+        setPhase('scored');
+        setError(e instanceof Error ? e.message : 'The escrow could not be created.');
+      }
+      return;
+    }
     await new Promise((r) => setTimeout(r, 900));
     const tx = await createEscrow({
       sellerId,
@@ -215,9 +264,9 @@ export function NewEscrowForm() {
             subtitle="Reputation and dispute history feed the model's two highest-weighted features."
           >
             <div className={ui.stackSm}>
-              {SELLERS.map((id) => {
-                const candidate = USER_BY_ID[id];
-                const stats = SELLER_PROFILES[id];
+              {sellers.map((candidate) => {
+                const id = candidate.id;
+                const stats = profileOf(candidate);
                 const isOn = id === sellerId;
                 return (
                   <button

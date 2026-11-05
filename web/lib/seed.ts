@@ -349,3 +349,10 @@ function buildAuditLog(): AuditEntry[] {
 }
 
 export const SEED_AUDIT: AuditEntry[] = buildAuditLog();
+
+/** History per seller. The service has no seller-history source yet, so live sellers
+ *  are matched to the seeded profile by display name and otherwise get this neutral one. */
+const NEUTRAL_PROFILE = { reputation: 0.5, disputeRate: 0.1, completed: 0 };
+export function sellerProfileOf(user: { id: string; displayName: string }) {
+  return SELLER_PROFILES[USERS.find((x) => x.displayName === user.displayName)?.id ?? user.id] ?? NEUTRAL_PROFILE;
+}

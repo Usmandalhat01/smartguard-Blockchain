@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { ArrowLeftRight, Scale, ShieldCheck, Undo2, X } from 'lucide-react';
 import { Button, Field, Notice, ui } from './ui';
 import { useStore } from '@/lib/store';
-import { USER_BY_ID } from '@/lib/seed';
 import { eth } from '@/lib/format';
 import type { Dispute, Transaction } from '@/lib/types';
 import d from './dialog.module.css';
@@ -17,7 +16,8 @@ import d from './dialog.module.css';
 export function ResolveDialog({
   tx, dispute, onClose,
 }: { tx: Transaction; dispute: Dispute; onClose: () => void }) {
-  const { resolveDispute } = useStore();
+  const { resolveDispute, userById, backendConnected } = useStore();
+  const [failure, setFailure] = useState<string | null>(null);
   const [forSeller, setForSeller] = useState<boolean | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -28,17 +28,23 @@ export function ResolveDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const seller = USER_BY_ID[tx.sellerId];
-  const buyer = USER_BY_ID[tx.buyerId];
+  const seller = userById(tx.sellerId);
+  const buyer = userById(tx.buyerId);
   const valid = forSeller !== null && note.trim().length >= 20;
 
   async function submit() {
     if (forSeller === null) return;
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 900));
-    await resolveDispute(tx.id, forSeller, note.trim());
-    setBusy(false);
-    onClose();
+    setFailure(null);
+    try {
+      if (!backendConnected) await new Promise((r) => setTimeout(r, 900));
+      await resolveDispute(tx.id, forSeller, note.trim());
+      onClose();
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message.split('\n')[0].slice(0, 160) : 'The ruling could not be sent.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -130,6 +136,7 @@ export function ResolveDialog({
         </div>
 
         <footer className={d.foot}>
+          {failure && <span role="alert" style={{ color: 'var(--blocked)', fontSize: '0.8rem', marginRight: 'auto' }}>{failure}</span>}
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" disabled={!valid} loading={busy} onClick={submit}>
             Execute ruling

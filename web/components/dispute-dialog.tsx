@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Gavel, X } from 'lucide-react';
 import { Button, Field, Notice, ui } from './ui';
 import { useStore } from '@/lib/store';
-import { USER_BY_ID } from '@/lib/seed';
 import { eth } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 import d from './dialog.module.css';
@@ -14,7 +13,8 @@ import d from './dialog.module.css';
 export function DisputeDialog({
   tx, role, onClose,
 }: { tx: Transaction; role: 'buyer' | 'seller'; onClose: () => void }) {
-  const { initiateDispute, settings } = useStore();
+  const { initiateDispute, settings, userById, backendConnected } = useStore();
+  const [failure, setFailure] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -24,15 +24,21 @@ export function DisputeDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const arbitrator = USER_BY_ID[tx.arbitratorId];
+  const arbitrator = userById(tx.arbitratorId);
   const valid = reason.trim().length >= 20;
 
   async function submit() {
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 800));
-    await initiateDispute(tx.id, role, reason.trim());
-    setBusy(false);
-    onClose();
+    setFailure(null);
+    try {
+      if (!backendConnected) await new Promise((r) => setTimeout(r, 800));
+      await initiateDispute(tx.id, role, reason.trim());
+      onClose();
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message.split('\n')[0].slice(0, 160) : 'The dispute could not be sent.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -87,6 +93,7 @@ export function DisputeDialog({
         </div>
 
         <footer className={d.foot}>
+          {failure && <span role="alert" style={{ color: 'var(--blocked)', fontSize: '0.8rem', marginRight: 'auto' }}>{failure}</span>}
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="danger" disabled={!valid} loading={busy} onClick={submit}>
             Submit dispute

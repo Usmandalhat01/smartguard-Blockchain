@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { USER_BY_ID } from '@/lib/seed';
+import { useStore } from '@/lib/store';
 import { eth, relativeTime } from '@/lib/format';
 import { ESCROW_STATE_META, riskBand, type Outcome, type Transaction } from '@/lib/types';
 import { Badge, ui, type Tone } from './ui';
@@ -48,6 +48,7 @@ export function TransactionTable({
   actions?: (tx: Transaction) => ReactNode;
   emptyState?: ReactNode;
 }) {
+  const { userById } = useStore();
   if (transactions.length === 0 && emptyState) return <>{emptyState}</>;
 
   return (
@@ -66,7 +67,7 @@ export function TransactionTable({
         </thead>
         <tbody>
           {transactions.map((tx) => {
-            const other = USER_BY_ID[counterpartyOf(tx)];
+            const other = userById(counterpartyOf(tx));
             const updated = tx.completedAt ?? tx.deliveryConfirmedAt ?? tx.createdAt;
             return (
               <tr key={tx.id}>

@@ -21,6 +21,9 @@ export const SESSION_COOKIE = 'sg_session';
 export const SESSION_TTL_SECONDS = 60 * 60 * 8; // one working day
 
 interface Claims extends Principal {
+  /** FastAPI bearer token, present only when the live backend issued the session.
+   *  It lives inside the signed HttpOnly cookie, so page scripts never see it. */
+  at?: string;
   /** Issued at, seconds since epoch. */
   iat: number;
   /** Expiry, seconds since epoch. */
@@ -81,9 +84,9 @@ const encodeJson = (value: unknown) =>
 
 /* -------------------------------------------------------------- issue --- */
 
-export async function signSession(principal: Principal): Promise<string> {
+export async function signSession(principal: Principal, apiToken?: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const claims: Claims = { ...principal, iat: now, exp: now + SESSION_TTL_SECONDS };
+  const claims: Claims = { ...principal, iat: now, exp: now + SESSION_TTL_SECONDS, ...(apiToken ? { at: apiToken } : {}) };
 
   const header = encodeJson({ alg: 'HS256', typ: 'JWT' });
   const payload = encodeJson(claims);
@@ -108,6 +111,22 @@ const VALID_ROLES: Role[] = ['buyer', 'seller', 'arbitrator', 'admin'];
  * server error.
  */
 export async function verifySession(token: string | undefined): Promise<Principal | null> {
+  const claims = await verifyClaims(token);
+  if (!claims) return null;
+  return {
+    userId: claims.userId,
+    walletAddress: claims.walletAddress,
+    role: claims.role,
+    displayName: claims.displayName,
+  };
+}
+
+/** The backend bearer token carried by a valid session, if any. Server use only. */
+export async function apiTokenOf(token: string | undefined): Promise<string | null> {
+  return (await verifyClaims(token))?.at ?? null;
+}
+
+async function verifyClaims(token: string | undefined): Promise<Claims | null> {
   if (!token) return null;
 
   const parts = token.split('.');
@@ -138,12 +157,7 @@ export async function verifySession(token: string | undefined): Promise<Principa
   if (!claims.userId || !claims.walletAddress) return null;
   if (!VALID_ROLES.includes(claims.role)) return null;
 
-  return {
-    userId: claims.userId,
-    walletAddress: claims.walletAddress,
-    role: claims.role,
-    displayName: claims.displayName,
-  };
+  return claims;
 }
 
 /** Cookie attributes used by both the login and logout handlers. */

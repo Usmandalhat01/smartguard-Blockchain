@@ -23,5 +23,13 @@ pandas==2.1.4
 joblib==1.3.2
 PyYAML==6.0.1
 
-# Web3.py for the oracle bridge (Sprint 4). Table 3.3 names 6.11.
+# Web3.py for the oracle bridge (api/smartguard_api/chain.py). Table 3.3 names 6.11.
 web3==6.11.3
+# web3 6.11 needs the eth-* 3.x/2.x line. Unpinned, pip resolves newer eth-typing
+# and eth-utils, and web3's own pytest plugin then fails to import, so pytest
+# cannot start. These bounds are what the full suite was run against.
+eth-typing<4
+eth-utils<3
+eth-account<0.10
+# Required by the EmailStr fields in schemas.py.
+email-validator>=2.0

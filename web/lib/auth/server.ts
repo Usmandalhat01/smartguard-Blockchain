@@ -11,7 +11,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { SESSION_COOKIE, verifySession } from './session';
+import { SESSION_COOKIE, apiTokenOf, verifySession } from './session';
 import { can, homeFor, type Permission, type Principal } from './policy';
 
 export async function getPrincipal(): Promise<Principal | null> {
@@ -39,4 +39,10 @@ export async function requirePermission(permission: Permission): Promise<Princip
     redirect(`/forbidden?permission=${encodeURIComponent(permission)}&to=${encodeURIComponent(homeFor(principal.role))}`);
   }
   return principal;
+}
+
+/** The FastAPI bearer token for the current session, or null in demonstration mode. */
+export async function getApiToken(): Promise<string | null> {
+  const jar = await cookies();
+  return apiTokenOf(jar.get(SESSION_COOKIE)?.value);
 }

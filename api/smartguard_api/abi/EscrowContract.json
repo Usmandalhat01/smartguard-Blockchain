@@ -1,0 +1,874 @@
+[
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "oracle",
+    "type": "address"
+   },
+   {
+    "internalType": "uint8",
+    "name": "threshold",
+    "type": "uint8"
+   },
+   {
+    "internalType": "uint64",
+    "name": "timeLock",
+    "type": "uint64"
+   },
+   {
+    "internalType": "uint64",
+    "name": "holdingPeriod",
+    "type": "uint64"
+   }
+  ],
+  "stateMutability": "nonpayable",
+  "type": "constructor"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+   }
+  ],
+  "name": "AddressInsufficientBalance",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "EscrowAlreadyExists",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "EscrowNotFound",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "FailedInnerCall",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint64",
+    "name": "endsAt",
+    "type": "uint64"
+   },
+   {
+    "internalType": "uint256",
+    "name": "blockTime",
+    "type": "uint256"
+   }
+  ],
+  "name": "HoldingPeriodActive",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "NoRiskAssessment",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "caller",
+    "type": "address"
+   }
+  ],
+  "name": "NotArbitrator",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "caller",
+    "type": "address"
+   }
+  ],
+  "name": "NotBuyer",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "caller",
+    "type": "address"
+   }
+  ],
+  "name": "NotParty",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "owner",
+    "type": "address"
+   }
+  ],
+  "name": "OwnableInvalidOwner",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+   }
+  ],
+  "name": "OwnableUnauthorizedAccount",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "ReentrancyGuardReentrantCall",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint8",
+    "name": "score",
+    "type": "uint8"
+   },
+   {
+    "internalType": "uint8",
+    "name": "threshold",
+    "type": "uint8"
+   }
+  ],
+  "name": "RiskAssessmentRejected",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "SameParty",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint8",
+    "name": "threshold",
+    "type": "uint8"
+   }
+  ],
+  "name": "ThresholdOutOfRange",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint64",
+    "name": "endsAt",
+    "type": "uint64"
+   },
+   {
+    "internalType": "uint256",
+    "name": "blockTime",
+    "type": "uint256"
+   }
+  ],
+  "name": "TimeLockActive",
+  "type": "error"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "enum EscrowContract.State",
+    "name": "actual",
+    "type": "uint8"
+   },
+   {
+    "internalType": "enum EscrowContract.State",
+    "name": "required",
+    "type": "uint8"
+   }
+  ],
+  "name": "WrongState",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "ZeroAddress",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "ZeroAmount",
+  "type": "error"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "buyer",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint64",
+    "name": "timeLockEndsAt",
+    "type": "uint64"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "DeliveryConfirmed",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "raisedBy",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "arbitrator",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "DisputeInitiated",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "arbitrator",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "bool",
+    "name": "releasedToSeller",
+    "type": "bool"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "DisputeResolved",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "buyer",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "seller",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "address",
+    "name": "arbitrator",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "riskScore",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "threshold",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "FundsDeposited",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "recipient",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+   },
+   {
+    "indexed": false,
+    "internalType": "enum EscrowContract.Outcome",
+    "name": "outcome",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "FundsReleased",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "previousOwner",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "newOwner",
+    "type": "address"
+   }
+  ],
+  "name": "OwnershipTransferred",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "previous",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "next",
+    "type": "address"
+   }
+  ],
+  "name": "RiskOracleChanged",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "previous",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "next",
+    "type": "uint8"
+   }
+  ],
+  "name": "RiskThresholdChanged",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "indexed": false,
+    "internalType": "enum EscrowContract.State",
+    "name": "previous",
+    "type": "uint8"
+   },
+   {
+    "indexed": false,
+    "internalType": "enum EscrowContract.State",
+    "name": "next",
+    "type": "uint8"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "actor",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "timestamp",
+    "type": "uint256"
+   }
+  ],
+  "name": "StateChanged",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": false,
+    "internalType": "uint64",
+    "name": "timeLockSeconds",
+    "type": "uint64"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint64",
+    "name": "holdingPeriodSeconds",
+    "type": "uint64"
+   }
+  ],
+  "name": "TimingChanged",
+  "type": "event"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "claimRefund",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "buyer",
+    "type": "address"
+   },
+   {
+    "internalType": "address",
+    "name": "seller",
+    "type": "address"
+   },
+   {
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+   },
+   {
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+   }
+  ],
+  "name": "computeEscrowId",
+  "outputs": [
+   {
+    "internalType": "bytes32",
+    "name": "",
+    "type": "bytes32"
+   }
+  ],
+  "stateMutability": "pure",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "confirmDelivery",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address payable",
+    "name": "seller",
+    "type": "address"
+   },
+   {
+    "internalType": "address",
+    "name": "arbitrator",
+    "type": "address"
+   },
+   {
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+   }
+  ],
+  "name": "depositFunds",
+  "outputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "stateMutability": "payable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "getEscrow",
+  "outputs": [
+   {
+    "components": [
+     {
+      "internalType": "address payable",
+      "name": "buyer",
+      "type": "address"
+     },
+     {
+      "internalType": "address payable",
+      "name": "seller",
+      "type": "address"
+     },
+     {
+      "internalType": "address",
+      "name": "arbitrator",
+      "type": "address"
+     },
+     {
+      "internalType": "uint256",
+      "name": "amount",
+      "type": "uint256"
+     },
+     {
+      "internalType": "enum EscrowContract.State",
+      "name": "state",
+      "type": "uint8"
+     },
+     {
+      "internalType": "enum EscrowContract.Outcome",
+      "name": "outcome",
+      "type": "uint8"
+     },
+     {
+      "internalType": "uint8",
+      "name": "riskScoreAtDeposit",
+      "type": "uint8"
+     },
+     {
+      "internalType": "uint8",
+      "name": "thresholdAtDeposit",
+      "type": "uint8"
+     },
+     {
+      "internalType": "uint64",
+      "name": "createdAt",
+      "type": "uint64"
+     },
+     {
+      "internalType": "uint64",
+      "name": "deliveryConfirmedAt",
+      "type": "uint64"
+     },
+     {
+      "internalType": "uint64",
+      "name": "holdingPeriodEndsAt",
+      "type": "uint64"
+     },
+     {
+      "internalType": "bool",
+      "name": "exists",
+      "type": "bool"
+     }
+    ],
+    "internalType": "struct EscrowContract.Escrow",
+    "name": "",
+    "type": "tuple"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "holdingPeriodSeconds",
+  "outputs": [
+   {
+    "internalType": "uint64",
+    "name": "",
+    "type": "uint64"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "initiateDispute",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "owner",
+  "outputs": [
+   {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   }
+  ],
+  "name": "releaseFunds",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "renounceOwnership",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "bytes32",
+    "name": "escrowId",
+    "type": "bytes32"
+   },
+   {
+    "internalType": "bool",
+    "name": "releaseToSeller",
+    "type": "bool"
+   }
+  ],
+  "name": "resolveDispute",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "riskOracle",
+  "outputs": [
+   {
+    "internalType": "contract IRiskOracle",
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "riskThreshold",
+  "outputs": [
+   {
+    "internalType": "uint8",
+    "name": "",
+    "type": "uint8"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "next",
+    "type": "address"
+   }
+  ],
+  "name": "setRiskOracle",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint8",
+    "name": "next",
+    "type": "uint8"
+   }
+  ],
+  "name": "setRiskThreshold",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint64",
+    "name": "timeLock",
+    "type": "uint64"
+   },
+   {
+    "internalType": "uint64",
+    "name": "holdingPeriod",
+    "type": "uint64"
+   }
+  ],
+  "name": "setTimings",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "timeLockSeconds",
+  "outputs": [
+   {
+    "internalType": "uint64",
+    "name": "",
+    "type": "uint64"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "address",
+    "name": "newOwner",
+    "type": "address"
+   }
+  ],
+  "name": "transferOwnership",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ }
+]

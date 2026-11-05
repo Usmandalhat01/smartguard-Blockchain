@@ -65,6 +65,10 @@ export interface ScoringInput {
   /** Buyer's mean amount over the preceding 30 days, for amount_deviation. */
   meanAmount30d: number;
   channel: 'web' | 'mobile';
+  /** Live mode only: the seller's account id, and the buyer's wallet balance before
+   *  this transaction (the service trains amount_to_account_ratio on it). */
+  sellerId?: string;
+  accountBalanceEth?: number;
 }
 
 export interface ScoringResult {

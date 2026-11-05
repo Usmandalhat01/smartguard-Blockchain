@@ -25,7 +25,9 @@ export class ApiError extends Error {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  // Same-origin proxy: the session cookie carries the credentials, so the browser
+  // never holds the service's token and no CORS exception is needed.
+  const res = await fetch(`/api/backend${path.replace(/^\/api\/v1/, '')}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -48,8 +50,22 @@ export async function requestRiskScore(input: ScoringInput): Promise<ScoringResu
     await new Promise((r) => setTimeout(r, 420));
     return scoreTransaction(input);
   }
-  const result = await post<Omit<ScoringResult, 'source'>>('/api/v1/risk/score', input);
-  return { ...result, source: 'model' };
+  const wire = await post<{
+    riskScore: number; latencyMs: number;
+    contributions: { feature: string; value: number | null; importance: number }[];
+  }>('/api/v1/risk/score', {
+    amountEth: input.amountEth, sellerId: input.sellerId, accountAgeDays: input.accountAgeDays,
+    velocity24h: input.velocity24h, counterpartyReputation: input.counterpartyReputation,
+    sellerDisputeRate: input.sellerDisputeRate, buyerDisputeRate: input.buyerDisputeRate,
+    deviceConsistent: input.deviceConsistent, highRiskGeo: input.highRiskGeo, offHours: input.offHours,
+    meanAmount30d: input.meanAmount30d, accountBalanceEth: input.accountBalanceEth ?? 12, channel: input.channel,
+  });
+  return {
+    riskScore: wire.riskScore, latencyMs: wire.latencyMs, source: 'model',
+    contributions: wire.contributions.map((c) => ({
+      feature: c.feature, value: c.value === null ? 'n/a' : String(c.value), contribution: c.importance,
+    })),
+  };
 }
 
 /**

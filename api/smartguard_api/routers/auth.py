@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 from ..config import Settings, get_settings
 from ..db import get_db
 from ..models import AuditLayer, Role, User
-from ..schemas import LoginRequest, LoginResponse, Principal
-from ..security import create_access_token, hash_password, verify_password
+from ..schemas import LinkWalletRequest, LoginRequest, LoginResponse, Principal
+from ..security import CurrentUser, create_access_token, hash_password, verify_password
 from .. import audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -77,3 +77,48 @@ def login(
         ),
         redirectTo=HOME_FOR[user.role],
     )
+
+
+def wallet_link_message(user: User) -> str:
+    return f"SmartGuard wallet link for account {user.id}"
+
+
+@router.put("/wallet")
+def link_wallet(
+    payload: LinkWalletRequest,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Binds the caller's account to a wallet they control.
+
+    Contract roles are wallet addresses, and the seeded addresses belong to
+    nobody. The caller proves control by signing a fixed message; the address
+    recovered from the signature must equal the one claimed. Claiming an address
+    without the key is refused, and an address already held by another account
+    is refused rather than reassigned.
+    """
+    from eth_account import Account
+    from eth_account.messages import encode_defunct
+    from web3 import Web3
+
+    try:
+        recovered = Account.recover_message(
+            encode_defunct(text=wallet_link_message(user)), signature=payload.signature,
+        )
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Malformed signature.") from error
+    if recovered.lower() != payload.address.lower():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The signature does not match that address.")
+
+    address = Web3.to_checksum_address(payload.address)
+    holder = db.query(User).filter(User.wallet_address == address).one_or_none()
+    if holder is not None and holder.id != user.id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That wallet is linked to another account.")
+
+    user.wallet_address = address
+    audit.record(
+        db, layer=AuditLayer.APPLICATION, event_type="auth.wallet.link",
+        summary=f"{user.display_name} linked wallet {address}.", actor=user,
+    )
+    db.commit()
+    return {"walletAddress": address}

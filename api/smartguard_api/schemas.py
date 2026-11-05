@@ -19,6 +19,11 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class LinkWalletRequest(Strict):
+    address: str = Field(pattern=r"^0x[0-9a-fA-F]{40}$")
+    signature: str = Field(pattern=r"^0x[0-9a-fA-F]{130}$")
+
+
 # Response models read snake_case attributes off the ORM and emit camelCase to
 # the client. `validation_alias` rather than `alias` is what makes that
 # asymmetry work: FastAPI serialises with by_alias=True, so a plain `alias`
@@ -146,6 +151,10 @@ class EscrowOut(BaseModel):
     # never has to reimplement the policy to decide which controls to render.
     permittedActions: list[str] = []
 
+    # Present once a dispute has been raised, so the interface needs no second
+    # request to show it.
+    dispute: "DisputeOut | None" = None
+
 
 # -------------------------------------------------------------- disputes ---
 
@@ -170,6 +179,9 @@ class DisputeOut(BaseModel):
     resolutionForSeller: bool | None = Field(validation_alias="resolution_for_seller")
     resolutionNote: str | None = Field(validation_alias="resolution_note")
     resolvedAt: datetime | None = Field(validation_alias="resolved_at")
+
+
+EscrowOut.model_rebuild()
 
 
 # ----------------------------------------------------------------- audit ---

@@ -58,10 +58,28 @@ class Settings(BaseSettings):
     oracle_private_key: str = ""
     escrow_contract_address: str = ""
     risk_oracle_contract_address: str = ""
+    # Block the contracts were deployed at; the sync reads from here the first
+    # time it runs. 12015168 is the Sepolia deployment in docs/evidence.
+    chain_start_block: int = 0
+    chain_confirmations: int = 2
+    chain_poll_seconds: int = 15
+    oracle_score_ttl_seconds: int = 600
 
     # --- service --------------------------------------------------------
     cors_origins: str = "http://localhost:3000"
     environment: str = "development"
+
+    @property
+    def chain_enabled(self) -> bool:
+        """True only when everything the bridge needs is configured.
+
+        Partial configuration counts as disabled, so a half-set environment
+        cannot produce a service that scores escrows it cannot write on chain.
+        """
+        return all((
+            self.sepolia_rpc_url, self.oracle_private_key,
+            self.escrow_contract_address, self.risk_oracle_contract_address,
+        ))
 
     @property
     def is_production(self) -> bool:

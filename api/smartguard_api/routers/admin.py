@@ -23,6 +23,18 @@ from ..settings_store import current as current_settings, update as update_setti
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+@router.get("/public-settings", response_model=SettingsOut)
+def public_settings(
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SettingsOut:
+    """The parameters every signed-in user needs to read the interface correctly
+    (the gate, the time lock, the holding period). Read-only; changing them
+    stays behind admin:settings:write."""
+    return SettingsOut(**current_settings(db, settings))
+
+
 @router.get(
     "/settings",
     response_model=SettingsOut,

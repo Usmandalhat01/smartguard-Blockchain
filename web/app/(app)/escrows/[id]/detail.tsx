@@ -10,7 +10,6 @@ import { useSession } from '@/lib/auth/context';
 import { canReadEscrow } from '@/lib/auth/policy';
 import { useStore } from '@/lib/store';
 import { useNow } from '@/lib/clock';
-import { USER_BY_ID } from '@/lib/seed';
 import { absoluteTime, duration, eth, gas, relativeTime } from '@/lib/format';
 
 import s from './detail.module.css';
@@ -18,7 +17,7 @@ import s from './detail.module.css';
 export function EscrowDetail({ id }: { id: string }) {
   const { principal } = useSession();
   const {
-    transactionById, disputeForTransaction, auditForTransaction, settings, contracts, ready,
+    transactionById, disputeForTransaction, auditForTransaction, settings, contracts, ready, userById, onChain,
   } = useStore();
   const now = useNow();
 
@@ -51,9 +50,9 @@ export function EscrowDetail({ id }: { id: string }) {
 
   const dispute = disputeForTransaction(tx.id);
   const entries = auditForTransaction(tx.id);
-  const buyer = USER_BY_ID[tx.buyerId];
-  const seller = USER_BY_ID[tx.sellerId];
-  const arbitrator = USER_BY_ID[tx.arbitratorId];
+  const buyer = userById(tx.buyerId);
+  const seller = userById(tx.sellerId);
+  const arbitrator = userById(tx.arbitratorId);
 
   const totalGas = entries.reduce((sum, e) => sum + (e.gasUsed ?? 0), 0);
 
@@ -262,10 +261,12 @@ export function EscrowDetail({ id }: { id: string }) {
                 ['Chain ID', <span key="d" className="mono">{contracts.chainId}</span>],
               ]} />
 
-              <Notice tone="warn" icon={<Boxes size={15} />}>
-                Contract addresses and transaction hashes are placeholders until a genuine Sepolia
-                deployment record replaces them. They must not be cited as verification.
-              </Notice>
+              {!onChain && (
+                <Notice tone="warn" icon={<Boxes size={15} />}>
+                  Contract addresses and transaction hashes are placeholders until a genuine Sepolia
+                  deployment record replaces them. They must not be cited as verification.
+                </Notice>
+              )}
             </div>
           </Card>
 

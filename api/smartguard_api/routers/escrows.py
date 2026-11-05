@@ -27,14 +27,15 @@ from ..db import get_db
 from ..features import build_vector
 from ..inference import InferenceUnavailable
 from ..models import (
-    AuditLayer, Dispute, EscrowState, FraudPrediction, Outcome, Role, Transaction, User,
+    AuditLayer, AuditLog, Dispute, EscrowState, FraudPrediction, Outcome, Role, Transaction, User,
 )
 from ..schemas import (
-    CreateEscrowRequest, DisputeOut, EscrowOut, RaiseDisputeRequest, ResolveDisputeRequest,
+    AuditOut, CreateEscrowRequest, DisputeOut, EscrowOut, RaiseDisputeRequest, ResolveDisputeRequest,
 )
 from ..security import CurrentUser, require
 from ..settings_store import current as current_settings
 from .. import audit, policy
+from ..chain import ChainError, compute_escrow_id, eth_to_wei, model_version_bytes32  # noqa: F401
 
 router = APIRouter(prefix="/escrows", tags=["escrows"])
 
@@ -45,6 +46,24 @@ NOT_FOUND = HTTPException(
 
 
 # ------------------------------------------------------------- helpers -----
+
+def _offchain_only(request: Request) -> None:
+    """Refuses state changes that, with the bridge enabled, belong to the wallet.
+
+    Once the contracts are in play the chain is the source of truth. Letting
+    this service flip a state column would let the database say DELIVERED while
+    the contract still said INITIATED, and the two would never reconcile. The
+    wallet sends the transaction; `chain_sync` records what the chain did.
+    """
+    if getattr(request.app.state, "chain", None) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "On-chain mode: this action is a contract call signed by your "
+                "wallet. The record updates when the transaction is confirmed."
+            ),
+        )
+
 
 def _visible(user: User, db: Session):
     """The query scoped to what this principal may read.
@@ -243,10 +262,37 @@ def create_escrow(
     now = datetime.now(timezone.utc)
     nonce = secrets.randbits(48)
 
+    chain = getattr(request.app.state, "chain", None)
+    escrow_id = f"pending:{nonce}"
+    score_write = None
+    if chain is not None:
+        # The identifier the contract will derive at deposit, from the parties'
+        # wallets, the exact wei amount and this nonce.
+        escrow_id = compute_escrow_id(
+            user.wallet_address, seller.wallet_address,
+            eth_to_wei(payload.amountEth), nonce,
+        )
+        try:
+            score_write = chain.write_score(
+                escrow_id, assessment.risk_score, assessment.model_version,
+            )
+        except ChainError as error:
+            audit.record(
+                db, layer=AuditLayer.ORACLE, event_type="oracle.write.failed",
+                summary=f"Oracle write failed; escrow not admitted: {error}",
+                actor=user, detail={"escrowId": escrow_id},
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "The risk score could not be written to the chain, so this "
+                    "escrow cannot be initiated. No funds have been committed."
+                ),
+            ) from error
+
     tx = _insert_with_reference(db, lambda reference: Transaction(
-        # Placeholder until the oracle bridge computes the keccak256 identifier
-        # from the contract (Sprint 4). Recorded as such rather than left blank.
-        escrow_id=f"pending:{nonce}",
+        escrow_id=escrow_id,
         reference=reference,
         buyer_id=user.id,
         seller_id=seller.id,
@@ -290,10 +336,23 @@ def create_escrow(
         db, layer=AuditLayer.APPLICATION, event_type="risk.gate.pass",
         summary=(
             f"Risk gate passed: {assessment.risk_score:.4f} ≤ {threshold:.2f}. "
-            "Awaiting oracle write and on-chain deposit."
+            + ("Score written on chain; awaiting the buyer's deposit."
+               if score_write else "Awaiting oracle write and on-chain deposit.")
         ),
         transaction_id=tx.id, actor=user,
     )
+    if score_write is not None:
+        audit.record(
+            db, layer=AuditLayer.ORACLE, event_type="oracle.write",
+            summary=(
+                f"Score {score_write.score} submitted to RiskOracleContract "
+                f"(oracle nonce {score_write.nonce})."
+            ),
+            transaction_id=tx.id, actor=user,
+            tx_hash=score_write.tx_hash, gas_used=score_write.gas_used,
+            block_number=score_write.block_number,
+            detail={"escrowId": escrow_id, "logIndex": None},
+        )
 
     db.commit()
     db.refresh(tx)
@@ -301,6 +360,21 @@ def create_escrow(
 
 
 # ---------------------------------------------------------------- FR-07 ----
+
+@router.get(
+    "/counterparties",
+    dependencies=[Depends(require("escrow:create"))],
+)
+def counterparties(
+    user: CurrentUser, db: Annotated[Session, Depends(get_db)],
+) -> list[dict]:
+    """Sellers a buyer may open an escrow with. Name and wallet only."""
+    sellers = db.query(User).filter(User.role == Role.SELLER, User.is_active.is_(True)).all()
+    return [
+        {"id": u.id, "displayName": u.display_name, "walletAddress": u.wallet_address}
+        for u in sellers if u.id != user.id
+    ]
+
 
 @router.get("", response_model=list[EscrowOut])
 def list_escrows(
@@ -328,9 +402,63 @@ def get_escrow(
     return _serialise(_load(reference, user, db), user, config)
 
 
+@router.get("/{reference}/audit", response_model=list[AuditOut])
+def escrow_audit(
+    reference: str, user: CurrentUser, db: Annotated[Session, Depends(get_db)],
+) -> list[AuditLog]:
+    """The audit trail of one escrow, for the parties to it (FR-09).
+
+    Scoped by `_load`, so a caller who may not see the escrow gets the same 404.
+    The administrator-only /admin/audit remains the cross-escrow view.
+    """
+    tx = _load(reference, user, db)
+    return (
+        db.query(AuditLog).filter(AuditLog.transaction_id == tx.id)
+        .order_by(AuditLog.created_at.desc()).all()
+    )
+
+
+@router.get("/{reference}/onchain")
+def onchain_parameters(
+    reference: str,
+    request: Request,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Exactly what the buyer's wallet must send to `depositFunds`.
+
+    The values are derived here from the stored record so the browser does not
+    recompute them. A different amount, seller or nonce yields a different
+    escrow identifier, which has no score, which reverts.
+    """
+    chain = getattr(request.app.state, "chain", None)
+    if chain is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The blockchain bridge is not configured on this server.",
+        )
+    tx = _load(reference, user, db)
+    deposited = db.query(AuditLog).filter(
+        AuditLog.transaction_id == tx.id, AuditLog.event_type == "chain.FundsDeposited",
+    ).first() is not None
+    return {
+        "escrowId": tx.escrow_id,
+        "escrowContract": chain.escrow_address,
+        "riskOracleContract": chain.oracle_address,
+        "chainId": chain.w3.eth.chain_id,
+        "seller": tx.seller.wallet_address,
+        "arbitrator": tx.arbitrator.wallet_address,
+        "amountWei": str(eth_to_wei(tx.amount_eth)),
+        "nonce": str(tx.nonce),
+        "depositConfirmed": deposited,
+        "scoreRecorded": tx.escrow_id.startswith("0x"),
+    }
+
+
 # ---------------------------------------------------------------- FR-03 ----
 
-@router.post("/{reference}/confirm-delivery", response_model=EscrowOut)
+@router.post("/{reference}/confirm-delivery", response_model=EscrowOut,
+             dependencies=[Depends(_offchain_only)])
 def confirm_delivery(
     reference: str,
     user: CurrentUser,
@@ -362,7 +490,8 @@ def confirm_delivery(
     return _serialise(tx, user, config)
 
 
-@router.post("/{reference}/withdraw", response_model=EscrowOut)
+@router.post("/{reference}/withdraw", response_model=EscrowOut,
+             dependencies=[Depends(_offchain_only)])
 def withdraw(
     reference: str,
     user: CurrentUser,
@@ -400,7 +529,8 @@ def withdraw(
 
 # ---------------------------------------------------------------- FR-04 ----
 
-@router.post("/{reference}/dispute", response_model=DisputeOut, status_code=201)
+@router.post("/{reference}/dispute", response_model=DisputeOut, status_code=201,
+             dependencies=[Depends(_offchain_only)])
 def raise_dispute(
     reference: str,
     payload: RaiseDisputeRequest,
@@ -446,7 +576,8 @@ def raise_dispute(
 
 # ---------------------------------------------------------------- FR-05 ----
 
-@router.post("/{reference}/resolve", response_model=EscrowOut)
+@router.post("/{reference}/resolve", response_model=EscrowOut,
+             dependencies=[Depends(_offchain_only)])
 def resolve_dispute(
     reference: str,
     payload: ResolveDisputeRequest,
@@ -502,7 +633,8 @@ def resolve_dispute(
 
 # ---------------------------------------------------------------- FR-06 ----
 
-@router.post("/{reference}/refund", response_model=EscrowOut)
+@router.post("/{reference}/refund", response_model=EscrowOut,
+             dependencies=[Depends(_offchain_only)])
 def claim_refund(
     reference: str,
     user: CurrentUser,
